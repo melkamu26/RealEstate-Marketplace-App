@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "942756164744",
+    "project_id": "property-pulse-app-melkamu",
+    "storage_bucket": "property-pulse-app-melkamu.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:942756164744:android:b99058b001a48d0b7b5b3d",
+        "android_client_info": {
+          "package_name": "com.example.property_pulse"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAoy0qId93bJBN8zk7ikKZSY1Gbdwxq9fI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

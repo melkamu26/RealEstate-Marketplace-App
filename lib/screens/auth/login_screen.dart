@@ -4,6 +4,7 @@ import '../../widgets/custom_button.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/bottom_nav_scaffold.dart';
 import 'signup_screen.dart';
+import 'forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -21,46 +22,86 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text('PropertyPulse',
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-            SizedBox(height: 20),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            children: [
+              const Text(
+                'PropertyPulse',
+                style: TextStyle(
+                  fontSize: 34,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1D3557),
+                ),
+              ),
 
-            CustomTextField(controller: email, hint: 'Email'),
-            SizedBox(height: 10),
-            CustomTextField(controller: password, hint: 'Password', obscure: true),
-            SizedBox(height: 10),
+              const SizedBox(height: 40),
 
-            Text(errorText, style: TextStyle(color: Colors.red)),
+              CustomTextField(controller: email, hint: "Email"),
+              const SizedBox(height: 20),
 
-            SizedBox(height: 20),
-            CustomButton(
-              text: 'Login',
-              onTap: () async {
-                try {
-                  await auth.login(email.text, password.text);
-                  Navigator.pushReplacement(
+              CustomTextField(controller: password, hint: "Password", obscure: true),
+              const SizedBox(height: 10),
+
+              Text(errorText, style: const TextStyle(color: Colors.red)),
+              const SizedBox(height: 20),
+
+              CustomButton(
+                text: "Login",
+                onTap: () async {
+                  try {
+                    await auth.login(email.text.trim(), password.text.trim());
+
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (_) => const BottomNavScaffold()),
+                      (route) => false,
+                    );
+                  } catch (e) {
+                    setState(() => errorText = e.toString());
+                  }
+                },
+              ),
+
+              const SizedBox(height: 10),
+
+              TextButton(
+                onPressed: () {
+                  Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const BottomNavScaffold()),
+                    MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
                   );
-                } catch (e) {
-                  setState(() => errorText = e.toString());
-                }
-              },
-            ),
+                },
+                child: const Text(
+                  "Forgot Password?",
+                  style: TextStyle(
+                    color: Color(0xFF1D3557),
+                    fontSize: 15,
+                  ),
+                ),
+              ),
 
-            TextButton(
-              onPressed: () {
-                Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const SignupScreen()));
-              },
-              child: Text('Create Account'),
-            ),
-          ],
+              const SizedBox(height: 15),
+
+              TextButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SignupScreen()),
+                  );
+                },
+                child: const Text(
+                  "Create Account",
+                  style: TextStyle(
+                    color: Color(0xFF1D3557),
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../widgets/custom_textfield.dart';
 import '../../widgets/custom_button.dart';
 import '../../services/auth_service.dart';
+import 'change_password_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -15,30 +16,36 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final firstName = TextEditingController();
   final lastName = TextEditingController();
+  final email = TextEditingController();
   final priceRange = TextEditingController();
   final preferredCity = TextEditingController();
   final propertyType = TextEditingController();
 
   final auth = AuthService();
   final user = FirebaseAuth.instance.currentUser;
+
   bool isLoading = false;
   String errorText = "";
 
   @override
   void initState() {
     super.initState();
-    _loadUserProfile();
+    _loadProfile();
   }
 
-  Future<void> _loadUserProfile() async {
+  Future<void> _loadProfile() async {
     if (user == null) return;
 
-    final doc = await FirebaseFirestore.instance.collection("users").doc(user!.uid).get();
+    final doc = await FirebaseFirestore.instance
+        .collection("users")
+        .doc(user!.uid)
+        .get();
 
     if (doc.exists) {
       setState(() {
         firstName.text = doc["firstName"] ?? "";
         lastName.text = doc["lastName"] ?? "";
+        email.text = doc["email"] ?? user!.email!;
         priceRange.text = doc["priceRange"] ?? "";
         preferredCity.text = doc["preferredCity"] ?? "";
         propertyType.text = doc["propertyType"] ?? "";
@@ -55,7 +62,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
 
     try {
-      await FirebaseFirestore.instance.collection("users").doc(user!.uid).update({
+      await FirebaseFirestore.instance
+          .collection("users")
+          .doc(user!.uid)
+          .update({
         "firstName": firstName.text.trim(),
         "lastName": lastName.text.trim(),
         "priceRange": priceRange.text.trim(),
@@ -64,6 +74,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       });
 
       if (!mounted) return;
+
       setState(() => isLoading = false);
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -82,36 +93,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Profile"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await auth.logout();
-              if (!mounted) return;
-              Navigator.pop(context);
-            },
-          )
-        ],
+        backgroundColor: Colors.white,
+        elevation: 1,
+        iconTheme: const IconThemeData(color: Color(0xFF1D3557)),
+        title: const Text(
+          "Profile",
+          style: TextStyle(
+            color: Color(0xFF1D3557),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
+
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(24),
         child: Column(
           children: [
             CustomTextField(controller: firstName, hint: "First Name"),
-            const SizedBox(height: 10),
+            const SizedBox(height: 16),
 
             CustomTextField(controller: lastName, hint: "Last Name"),
-            const SizedBox(height: 10),
+            const SizedBox(height: 16),
 
-            CustomTextField(controller: priceRange, hint: "Price Range (e.g. 200k - 400k)"),
-            const SizedBox(height: 10),
+            TextField(
+              controller: email,
+              readOnly: true,
+              decoration: InputDecoration(
+                hintText: "Email",
+                filled: true,
+                fillColor: Colors.grey.shade200,
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            CustomTextField(controller: priceRange, hint: "Budget"),
+            const SizedBox(height: 16),
 
             CustomTextField(controller: preferredCity, hint: "Preferred City"),
-            const SizedBox(height: 10),
+            const SizedBox(height: 16),
 
-            CustomTextField(controller: propertyType, hint: "Property Type (House, Condo, etc.)"),
-            const SizedBox(height: 10),
+            CustomTextField(controller: propertyType, hint: "Property Type"),
+            const SizedBox(height: 16),
 
             Text(errorText, style: const TextStyle(color: Colors.red)),
             const SizedBox(height: 20),
@@ -119,6 +141,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
             CustomButton(
               text: isLoading ? "Saving..." : "Save Profile",
               onTap: isLoading ? null : _saveProfile,
+            ),
+
+            const SizedBox(height: 20),
+
+            TextButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ChangePasswordScreen(),
+                  ),
+                );
+              },
+              child: const Text(
+                "Change Password",
+                style: TextStyle(
+                  color: Color(0xFF1D3557),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ],
         ),

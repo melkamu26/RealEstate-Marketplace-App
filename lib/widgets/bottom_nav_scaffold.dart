@@ -25,9 +25,16 @@ class _BottomNavScaffoldState extends State<BottomNavScaffold> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: _screens[_index],
+
       bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
         currentIndex: _index,
+        selectedItemColor: const Color(0xFF1D3557),
+        unselectedItemColor: Colors.grey,
+        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
+
         onTap: (i) => setState(() => _index = i),
+
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
