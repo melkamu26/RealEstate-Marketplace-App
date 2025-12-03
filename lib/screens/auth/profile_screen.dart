@@ -92,6 +92,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // 🔥 PROFESSIONAL APPBAR WITH LOGOUT BUTTON
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 1,
@@ -103,6 +104,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
             fontWeight: FontWeight.bold,
           ),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout, color: Color(0xFF1D3557)),
+            onPressed: () async {
+              await auth.logout();
+              if (!mounted) return;
+
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                '/',
+                (route) => false,
+              );
+            },
+          ),
+        ],
       ),
 
       body: SingleChildScrollView(
@@ -115,6 +131,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             CustomTextField(controller: lastName, hint: "Last Name"),
             const SizedBox(height: 16),
 
+            // 🔒 READ-ONLY EMAIL FIELD
             TextField(
               controller: email,
               readOnly: true,
@@ -145,6 +162,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             const SizedBox(height: 20),
 
+            // 🔥 CHANGE PASSWORD BUTTON
             TextButton(
               onPressed: () {
                 Navigator.push(
