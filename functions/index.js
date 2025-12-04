@@ -31,9 +31,17 @@ exports.getListings = functions.https.onRequest(async (req, res) => {
       }
     );
 
-    const data = await response.json();
-    res.status(200).send(data);
+    const apiJson = await response.json();
+
+    // 🔥 The REAL results path
+    const results = apiJson?.data?.home_search?.results || [];
+
+    // 🔥 WHAT FLUTTER EXPECTS
+    return res.status(200).json({
+      results: results
+    });
+
   } catch (err) {
-    res.status(500).send({ error: err.toString() });
+    return res.status(500).json({ error: err.toString() });
   }
 });
