@@ -1,32 +1,59 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';   // <-- REQUIRED
-import '../../models/property.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-class PropertyDetailScreen extends StatelessWidget {
+import '../../models/property.dart';
+import '../../services/property_service.dart';
+import 'gallery_screen.dart';
+
+class PropertyDetailScreen extends StatefulWidget {
   final Property property;
 
   const PropertyDetailScreen({super.key, required this.property});
 
-  // OPEN IN GOOGLE MAPS FUNCTION
+  @override
+  State<PropertyDetailScreen> createState() => _PropertyDetailScreenState();
+}
+
+class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
+  bool loadingGallery = true;
+
+  @override
+  void initState() {
+    super.initState();
+    loadGalleryImages();
+  }
+
+  Future<void> loadGalleryImages() async {
+    final photos = await PropertyService().fetchGalleryPhotos(
+      widget.property.propertyId,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      widget.property.images = photos;
+      loadingGallery = false;
+    });
+  }
+
   Future<void> openMap() async {
     final url =
-        "https://www.google.com/maps/search/?api=1&query=${property.latitude},${property.longitude}";
-
+        "https://www.google.com/maps/search/?api=1&query=${widget.property.latitude},${widget.property.longitude}";
     final uri = Uri.parse(url);
 
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
-      debugPrint("Could not open Google Maps");
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final p = widget.property;
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(property.address),
+        title: Text(p.address),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,
@@ -37,40 +64,77 @@ class PropertyDetailScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
 
-            // MAIN Realtor API IMAGE
+            // MAIN IMAGE
             SizedBox(
               height: 260,
               width: double.infinity,
               child: Image.network(
-                property.imageUrl,
+                p.imageUrl,
                 fit: BoxFit.cover,
               ),
             ),
 
             const SizedBox(height: 20),
 
-            // GOOGLE STREET VIEW IMAGE + TAG
-            if (property.streetViewUrl != null)
+            // GALLERY BUTTON
+            if (loadingGallery)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  child: CircularProgressIndicator(),
+                ),
+              )
+            else if (p.images.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => GalleryScreen(images: p.images),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blueGrey[900],
+                    minimumSize: const Size(double.infinity, 50),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text(
+                    "View Photo Gallery",
+                    style: TextStyle(fontSize: 16, color: Colors.white),
+                  ),
+                ),
+              ),
+
+            const SizedBox(height: 20),
+
+            // STREET VIEW IMAGE
+            if (p.streetViewUrl != null && p.streetViewUrl!.isNotEmpty)
               Stack(
                 children: [
                   SizedBox(
                     height: 200,
                     width: double.infinity,
                     child: Image.network(
-                      property.streetViewUrl!,
+                      p.streetViewUrl!,
                       fit: BoxFit.cover,
                     ),
                   ),
-
                   Positioned(
                     top: 10,
                     left: 10,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 6),
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.black.withOpacity(0.6),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Text(
                         "Google Street View",
@@ -91,7 +155,7 @@ class PropertyDetailScreen extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
-                "\$${property.price}",
+                "\$${p.price}",
                 style: const TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
@@ -102,12 +166,15 @@ class PropertyDetailScreen extends StatelessWidget {
 
             const SizedBox(height: 10),
 
-            // BASIC INFO
+            // BASIC DETAILS
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
-                "${property.beds} beds • ${property.baths} baths • ${property.sqft} sqft",
-                style: const TextStyle(fontSize: 16, color: Colors.grey),
+                "${p.beds} beds • ${p.baths} baths • ${p.sqft} sqft",
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey,
+                ),
               ),
             ),
 
@@ -132,10 +199,13 @@ class PropertyDetailScreen extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 30),
+            const SizedBox(height: 40),
           ],
         ),
       ),
     );
   }
 }
+
+
+

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../widgets/custom_textfield.dart';
-import '../../widgets/custom_button.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 import '../../services/auth_service.dart';
+import '../../widgets/custom_button.dart';
+import '../../widgets/custom_textfield.dart';
+import '../../widgets/bottom_nav_scaffold.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -16,23 +19,73 @@ class _SignupScreenState extends State<SignupScreen> {
   final lastName = TextEditingController();
   final email = TextEditingController();
   final password = TextEditingController();
-  final confirmPassword = TextEditingController();
+
+  final budget = TextEditingController();
+  final preferredCity = TextEditingController();
+
+  String selectedState = "CA";
+  String selectedPropertyType = "House";
+
+  bool loading = false;
   final auth = AuthService();
 
-  String errorText = "";
-  bool isLoading = false;
+  final List<String> states = [
+    "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA",
+    "KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ",
+    "NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT",
+    "VA","WA","WV","WI","WY"
+  ];
+
+  final List<String> propertyTypes = [
+    "House",
+    "Condo",
+    "Apartment",
+    "Townhouse",
+    "Multi-Family",
+    "Land / Lot"
+  ];
+
+  Future<void> signupUser() async {
+    setState(() => loading = true);
+
+    try {
+      User? user = await auth.signup(
+        email.text.trim(),
+        password.text.trim(),
+      );
+
+      if (user != null) {
+        await FirebaseFirestore.instance.collection("users").doc(user.uid).set({
+          "firstName": firstName.text.trim(),
+          "lastName": lastName.text.trim(),
+          "email": email.text.trim(),
+          "budget": budget.text.trim(),
+          "preferredCity": preferredCity.text.trim(),
+          "state": selectedState,
+          "propertyType": selectedPropertyType,
+        });
+
+        if (!mounted) return;
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const BottomNavScaffold()),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+
+    setState(() => loading = false);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF1D3557)),
-        title: const Text(
-          "Create Account",
-          style: TextStyle(color: Color(0xFF1D3557), fontWeight: FontWeight.bold),
-        ),
+        title: const Text("Sign Up"),
+        centerTitle: true,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
@@ -50,77 +103,34 @@ class _SignupScreenState extends State<SignupScreen> {
             CustomTextField(controller: password, hint: "Password", obscure: true),
             const SizedBox(height: 16),
 
-            CustomTextField(controller: confirmPassword, hint: "Confirm Password", obscure: true),
-            const SizedBox(height: 12),
+            CustomTextField(controller: budget, hint: "Budget"),
+            const SizedBox(height: 16),
 
-            Text(errorText, style: const TextStyle(color: Colors.red)),
-            const SizedBox(height: 20),
+            CustomTextField(controller: preferredCity, hint: "Preferred City"),
+            const SizedBox(height: 16),
+
+            // STATE DROPDOWN
+            DropdownButtonFormField(
+              value: selectedState,
+              items: states.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+              onChanged: (v) => setState(() => selectedState = v!),
+              decoration: const InputDecoration(labelText: "State"),
+            ),
+            const SizedBox(height: 16),
+
+            // PROPERTY TYPE DROPDOWN
+            DropdownButtonFormField(
+              value: selectedPropertyType,
+              items: propertyTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+              onChanged: (v) => setState(() => selectedPropertyType = v!),
+              decoration: const InputDecoration(labelText: "Property Type"),
+            ),
+
+            const SizedBox(height: 24),
 
             CustomButton(
-              text: isLoading ? "Creating..." : "Create Account",
-              onTap: isLoading
-                  ? null
-                  : () async {
-                      if (password.text.trim() != confirmPassword.text.trim()) {
-                        setState(() => errorText = "Passwords do not match");
-                        return;
-                      }
-
-                      setState(() {
-                        errorText = "";
-                        isLoading = true;
-                      });
-
-                      try {
-                        // Step 1: Create Auth User
-                        final user = await auth.signup(
-                          email.text.trim(),
-                          password.text.trim(),
-                        );
-
-                        // Step 2: Create Firestore User DOC
-                        await FirebaseFirestore.instance
-                            .collection("users")
-                            .doc(user!.uid)
-                            .set({
-                          "firstName": firstName.text.trim(),
-                          "lastName": lastName.text.trim(),
-                          "email": email.text.trim(),
-                          "password": password.text.trim(), // optional
-                          "priceRange": "",
-                          "preferredCity": "",
-                          "propertyType": "",
-                          "createdAt": DateTime.now(),
-                        });
-
-                        if (!mounted) return;
-                        setState(() => isLoading = false);
-
-                        // Success popup
-                        await showDialog(
-                          context: context,
-                          builder: (_) => AlertDialog(
-                            title: const Text("Success"),
-                            content: const Text("Account created! Please log in."),
-                            actions: [
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.pop(context);
-                                  Navigator.pop(context);
-                                },
-                                child: const Text("OK"),
-                              )
-                            ],
-                          ),
-                        );
-                      } catch (e) {
-                        if (!mounted) return;
-                        setState(() {
-                          isLoading = false;
-                          errorText = e.toString();
-                        });
-                      }
-                    },
+              text: loading ? "Creating..." : "Create Account",
+              onTap: loading ? null : signupUser,
             ),
           ],
         ),

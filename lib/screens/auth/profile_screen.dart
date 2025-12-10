@@ -17,23 +17,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final firstName = TextEditingController();
   final lastName = TextEditingController();
   final email = TextEditingController();
-  final priceRange = TextEditingController();
+  final budget = TextEditingController();
   final preferredCity = TextEditingController();
-  final propertyType = TextEditingController();
 
-  final auth = AuthService();
+  String selectedState = "CA";
+  String selectedPropertyType = "House";
+
+  bool loading = false;
+
   final user = FirebaseAuth.instance.currentUser;
+  final auth = AuthService();
 
-  bool isLoading = false;
-  String errorText = "";
+  final List<String> states = [
+    "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA",
+    "KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ",
+    "NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT",
+    "VA","WA","WV","WI","WY"
+  ];
+
+  final List<String> propertyTypes = [
+    "House",
+    "Condo",
+    "Multi-Family",
+    "Apartment",
+    "Townhouse",
+    "Land / Lot",
+  ];
 
   @override
   void initState() {
     super.initState();
-    _loadProfile();
+    loadProfile();
   }
 
-  Future<void> _loadProfile() async {
+  Future<void> loadProfile() async {
     if (user == null) return;
 
     final doc = await FirebaseFirestore.instance
@@ -41,84 +58,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
         .doc(user!.uid)
         .get();
 
-    if (doc.exists) {
-      setState(() {
-        firstName.text = doc["firstName"] ?? "";
-        lastName.text = doc["lastName"] ?? "";
-        email.text = doc["email"] ?? user!.email!;
-        priceRange.text = doc["priceRange"] ?? "";
-        preferredCity.text = doc["preferredCity"] ?? "";
-        propertyType.text = doc["propertyType"] ?? "";
-      });
-    }
-  }
-
-  Future<void> _saveProfile() async {
-    if (user == null) return;
+    if (!doc.exists) return;
 
     setState(() {
-      isLoading = true;
-      errorText = "";
+      firstName.text = doc["firstName"] ?? "";
+      lastName.text = doc["lastName"] ?? "";
+      email.text = doc["email"] ?? "";
+      budget.text = doc["budget"] ?? "";
+      preferredCity.text = doc["preferredCity"] ?? "";
+      selectedState = doc["state"] ?? "CA";
+      selectedPropertyType = doc["propertyType"] ?? "House";
+    });
+  }
+
+  Future<void> saveProfile() async {
+    if (user == null) return;
+
+    setState(() => loading = true);
+
+    await FirebaseFirestore.instance.collection("users").doc(user!.uid).update({
+      "firstName": firstName.text.trim(),
+      "lastName": lastName.text.trim(),
+      "budget": budget.text.trim(),
+      "preferredCity": preferredCity.text.trim(),
+      "state": selectedState,
+      "propertyType": selectedPropertyType,
     });
 
-    try {
-      await FirebaseFirestore.instance
-          .collection("users")
-          .doc(user!.uid)
-          .update({
-        "firstName": firstName.text.trim(),
-        "lastName": lastName.text.trim(),
-        "priceRange": priceRange.text.trim(),
-        "preferredCity": preferredCity.text.trim(),
-        "propertyType": propertyType.text.trim(),
-      });
+    if (!mounted) return;
 
-      if (!mounted) return;
+    setState(() => loading = false);
 
-      setState(() => isLoading = false);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Profile updated successfully!")),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        isLoading = false;
-        errorText = e.toString();
-      });
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Profile updated")),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // 🔥 PROFESSIONAL APPBAR WITH LOGOUT BUTTON
       appBar: AppBar(
+        title: const Text("Profile"),
         backgroundColor: Colors.white,
-        elevation: 1,
-        iconTheme: const IconThemeData(color: Color(0xFF1D3557)),
-        title: const Text(
-          "Profile",
-          style: TextStyle(
-            color: Color(0xFF1D3557),
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout, color: Color(0xFF1D3557)),
-            onPressed: () async {
-              await auth.logout();
-              if (!mounted) return;
-
-              Navigator.pushNamedAndRemoveUntil(
-                context,
-                '/',
-                (route) => false,
-              );
-            },
-          ),
-        ],
+        foregroundColor: Colors.black,
       ),
 
       body: SingleChildScrollView(
@@ -127,11 +109,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             CustomTextField(controller: firstName, hint: "First Name"),
             const SizedBox(height: 16),
-
             CustomTextField(controller: lastName, hint: "Last Name"),
             const SizedBox(height: 16),
 
-            // 🔒 READ-ONLY EMAIL FIELD
+            // READ ONLY EMAIL
             TextField(
               controller: email,
               readOnly: true,
@@ -143,43 +124,60 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 16),
 
-            CustomTextField(controller: priceRange, hint: "Budget"),
+            CustomTextField(controller: budget, hint: "Budget"),
             const SizedBox(height: 16),
 
             CustomTextField(controller: preferredCity, hint: "Preferred City"),
             const SizedBox(height: 16),
 
-            CustomTextField(controller: propertyType, hint: "Property Type"),
+            // STATE DROPDOWN
+            DropdownButtonFormField(
+              value: selectedState,
+              items: states
+                    .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                    .toList(),
+              onChanged: (value) => setState(() => selectedState = value!),
+              decoration: const InputDecoration(
+                labelText: "State",
+                border: OutlineInputBorder(),
+              ),
+            ),
+
             const SizedBox(height: 16),
 
-            Text(errorText, style: const TextStyle(color: Colors.red)),
-            const SizedBox(height: 20),
-
-            CustomButton(
-              text: isLoading ? "Saving..." : "Save Profile",
-              onTap: isLoading ? null : _saveProfile,
+            // PROPERTY TYPE DROPDOWN
+            DropdownButtonFormField(
+              value: selectedPropertyType,
+              items: propertyTypes
+                    .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+                    .toList(),
+              onChanged: (value) => setState(() => selectedPropertyType = value!),
+              decoration: const InputDecoration(
+                labelText: "Property Type",
+                border: OutlineInputBorder(),
+              ),
             ),
 
             const SizedBox(height: 20),
 
-            // 🔥 CHANGE PASSWORD BUTTON
+            CustomButton(
+              text: loading ? "Saving..." : "Save Profile",
+              onTap: loading ? null : saveProfile,
+            ),
+
+            const SizedBox(height: 20),
+
             TextButton(
+              child: const Text(
+                "Change Password",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => const ChangePasswordScreen(),
-                  ),
+                  MaterialPageRoute(builder: (_) => const ChangePasswordScreen()),
                 );
               },
-              child: const Text(
-                "Change Password",
-                style: TextStyle(
-                  color: Color(0xFF1D3557),
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
             ),
           ],
         ),

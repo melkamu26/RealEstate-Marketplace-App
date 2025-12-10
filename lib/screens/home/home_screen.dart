@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 import '../../models/property.dart';
 import '../../services/property_service.dart';
 import 'property_detail_screen.dart';
@@ -16,16 +19,58 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Property> listings = [];
   bool loading = true;
 
+  String userCity = "";
+  String userBudget = "";
+  String userType = "";
+  String userState = ""; 
+
   @override
   void initState() {
     super.initState();
-    loadListings();
+    loadUserPreferences();
+  }
+
+  Future<void> loadUserPreferences() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final doc = await FirebaseFirestore.instance
+        .collection("users")
+        .doc(user.uid)
+        .get();
+
+    if (doc.exists) {
+      userCity = doc["preferredCity"] ?? "";
+      userBudget = doc["budget"] ?? "";
+      userType = doc["propertyType"] ?? "";
+      userState = doc["state"] ?? ""; 
+    }
+
+    await loadListings();
   }
 
   Future<void> loadListings() async {
-    final data = await service.fetchListings();
+    List<Property> data;
 
-    if (!mounted) return; // prevent setState error
+    if (userCity.isNotEmpty ||
+        userBudget.isNotEmpty ||
+        userType.isNotEmpty ||
+        userState.isNotEmpty) 
+    {
+      // 🔥 Use advanced search
+      data = await service.searchProperties(
+        city: userCity,
+        maxPrice: userBudget,
+        propertyType: userType,
+        state: userState, // 
+      );
+    } 
+    else {
+      // Show default listings
+      data = await service.fetchListings();
+    }
+
+    if (!mounted) return;
 
     setState(() {
       listings = data;
@@ -71,9 +116,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-
-// Property Card Widget
-
 class PropertyCard extends StatelessWidget {
   final Property property;
 
@@ -105,8 +147,10 @@ class PropertyCard extends StatelessWidget {
               height: 180,
               width: double.infinity,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
-                  const SizedBox(height: 180, child: Center(child: Text("No Image"))),
+              errorBuilder: (_, __, ___) => const SizedBox(
+                height: 180,
+                child: Center(child: Text("No Image")),
+              ),
             ),
           ),
 
@@ -115,7 +159,6 @@ class PropertyCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Address
                 Text(
                   property.address,
                   style: const TextStyle(
@@ -126,7 +169,6 @@ class PropertyCard extends StatelessWidget {
 
                 const SizedBox(height: 4),
 
-                // Location
                 Text(
                   "${property.city}, ${property.state}",
                   style: const TextStyle(color: Colors.grey),
@@ -134,7 +176,6 @@ class PropertyCard extends StatelessWidget {
 
                 const SizedBox(height: 8),
 
-                // Price
                 Text(
                   "\$${property.price}",
                   style: const TextStyle(
@@ -146,7 +187,6 @@ class PropertyCard extends StatelessWidget {
 
                 const SizedBox(height: 6),
 
-                // Beds Bath Sqft
                 Text(
                   "${property.beds} beds • ${property.baths} baths • ${property.sqft} sqft",
                   style: const TextStyle(

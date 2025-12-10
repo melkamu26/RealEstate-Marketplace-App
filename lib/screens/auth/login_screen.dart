@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import '../../widgets/custom_textfield.dart';
 import '../../widgets/custom_button.dart';
 import '../../services/auth_service.dart';
-import '../../widgets/bottom_nav_scaffold.dart';
 import 'signup_screen.dart';
-import 'forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,91 +15,59 @@ class _LoginScreenState extends State<LoginScreen> {
   final email = TextEditingController();
   final password = TextEditingController();
   final auth = AuthService();
-  String errorText = '';
+
+  bool loading = false;
+
+  Future<void> loginUser() async {
+    setState(() => loading = true);
+
+    try {
+      await auth.login(email.text.trim(), password.text.trim());
+      if (!mounted) return;
+
+      Navigator.pushNamedAndRemoveUntil(context, "/home", (_) => false);
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+
+    setState(() => loading = false);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            children: [
-              const Text(
-                'PropertyPulse',
-                style: TextStyle(
-                  fontSize: 34,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1D3557),
-                ),
-              ),
+      appBar: AppBar(
+        title: const Text("Login"),
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        elevation: 0,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            CustomTextField(controller: email, hint: "Email"),
+            const SizedBox(height: 16),
+            CustomTextField(controller: password, hint: "Password", obscure: true),
 
-              const SizedBox(height: 40),
+            const SizedBox(height: 24),
+            CustomButton(
+              text: loading ? "Loading..." : "Login",
+              onTap: loading ? null : loginUser,
+            ),
 
-              CustomTextField(controller: email, hint: "Email"),
-              const SizedBox(height: 20),
-
-              CustomTextField(controller: password, hint: "Password", obscure: true),
-              const SizedBox(height: 10),
-
-              Text(errorText, style: const TextStyle(color: Colors.red)),
-              const SizedBox(height: 20),
-
-              CustomButton(
-                text: "Login",
-                onTap: () async {
-                  try {
-                    await auth.login(email.text.trim(), password.text.trim());
-
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(builder: (_) => const BottomNavScaffold()),
-                      (route) => false,
-                    );
-                  } catch (e) {
-                    setState(() => errorText = e.toString());
-                  }
-                },
-              ),
-
-              const SizedBox(height: 10),
-
-              TextButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
-                  );
-                },
-                child: const Text(
-                  "Forgot Password?",
-                  style: TextStyle(
-                    color: Color(0xFF1D3557),
-                    fontSize: 15,
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 15),
-
-              TextButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const SignupScreen()),
-                  );
-                },
-                child: const Text(
-                  "Create Account",
-                  style: TextStyle(
-                    color: Color(0xFF1D3557),
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
+            const SizedBox(height: 18),
+            TextButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => SignupScreen()),
+                );
+              },
+              child: const Text("Don't have an account? Signup"),
+            )
+          ],
         ),
       ),
     );
