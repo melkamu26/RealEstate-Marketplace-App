@@ -38,17 +38,15 @@ class _ChatScreenState extends State<ChatScreen> {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                chat.markSeen(snapshot.data!);
-
                 final docs = snapshot.data!.docs;
 
-                // Agent typing animation condition
+                // Detect "agent bot" last message
                 if (docs.isNotEmpty) {
                   final lastSender = docs.last["senderId"];
                   agentTyping = lastSender == "agent_bot";
                 }
 
-                // Auto-scroll
+                // Auto-scroll to bottom
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   if (scrollController.hasClients) {
                     scrollController.jumpTo(
@@ -105,13 +103,14 @@ class _ChatScreenState extends State<ChatScreen> {
               padding: const EdgeInsets.only(left: 16, bottom: 8),
               child: Row(
                 children: const [
-                  Text("Agent is typing...",
-                      style: TextStyle(color: Colors.grey)),
+                  Text(
+                    "Agent is typing...",
+                    style: TextStyle(color: Colors.grey),
+                  )
                 ],
               ),
             ),
 
-          // TEXT BOX
           _messageBox(),
         ],
       ),

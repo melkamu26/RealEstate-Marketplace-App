@@ -19,7 +19,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<Property> listings = [];
   Set<String> favorites = {};
-  Set<String> compared = {}; // compared properties (Firestore)
+  Set<String> compared = {};
   bool loading = true;
 
   String userCity = "";
@@ -32,7 +32,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     loadUserPreferences();
     loadFavorites();
-    loadCompare(); // 🔥 load compare items
+    loadCompare();
   }
 
   Future<void> loadFavorites() async {
@@ -41,7 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> loadCompare() async {
-    compared = await service.getCompareList(); //  loads Firestore list
+    compared = await service.getCompareList();
     setState(() {});
   }
 
@@ -91,17 +91,31 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
+
       appBar: AppBar(
         title: const Text("Recommended Properties"),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+        backgroundColor: theme.appBarTheme.backgroundColor ?? theme.colorScheme.surface,
+        foregroundColor: theme.appBarTheme.foregroundColor ?? theme.colorScheme.onSurface,
+        elevation: 1,
       ),
 
       body: loading
           ? const Center(child: CircularProgressIndicator())
           : listings.isEmpty
-              ? const Center(child: Text("No listings found"))
+              ? Center(
+                  child: Text(
+                    "No listings found",
+                    style: TextStyle(
+                      color: theme.textTheme.bodyLarge!.color,
+                      fontSize: 16,
+                    ),
+                  ),
+                )
               : ListView.builder(
                   padding: const EdgeInsets.all(12),
                   itemCount: listings.length,
@@ -111,11 +125,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     return PropertyCard(
                       property: p,
 
-                      /// ❤️ FAVORITE TOGGLE
                       isFavorite: favorites.contains(p.propertyId),
                       onFavoriteToggle: () async {
                         final isFav = favorites.contains(p.propertyId);
-
                         if (isFav) {
                           await service.removeFavorite(p.propertyId);
                           favorites.remove(p.propertyId);
@@ -126,13 +138,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         setState(() {});
                       },
 
-                      /// 🔲 COMPARE TOGGLE
                       isCompared: compared.contains(p.propertyId),
                       onCompareToggle: () async {
                         final isInList = compared.contains(p.propertyId);
 
                         if (isInList) {
-                          // REMOVE from Firestore ✔
                           await service.removeFromCompare(p.propertyId);
                           compared.remove(p.propertyId);
                         } else {
@@ -144,16 +154,12 @@ class _HomeScreenState extends State<HomeScreen> {
                             );
                             return;
                           }
-
-                          // ADD to Firestore ✔
                           await service.addToCompare(p);
                           compared.add(p.propertyId);
                         }
-
                         setState(() {});
                       },
 
-                      /// TAP CARD → DETAILS
                       onTap: () {
                         Navigator.push(
                           context,

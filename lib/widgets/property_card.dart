@@ -4,14 +4,11 @@ import '../models/property.dart';
 class PropertyCard extends StatelessWidget {
   final Property property;
 
-  //  favorites
   final bool isFavorite;
   final VoidCallback? onFavoriteToggle;
 
-  // tap whole card
   final VoidCallback? onTap;
 
-  //  compare
   final bool isCompared;
   final VoidCallback? onCompareToggle;
 
@@ -27,6 +24,8 @@ class PropertyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return GestureDetector(
       onTap: onTap,
       child: Stack(
@@ -34,13 +33,13 @@ class PropertyCard extends StatelessWidget {
           Container(
             margin: const EdgeInsets.only(bottom: 16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: theme.cardColor, 
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
                   blurRadius: 6,
                   offset: const Offset(0, 3),
-                  color: Colors.black.withOpacity(0.1),
+                  color: theme.shadowColor.withOpacity(0.15), 
                 )
               ],
             ),
@@ -59,7 +58,7 @@ class PropertyCard extends StatelessWidget {
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => Container(
                       height: 180,
-                      color: Colors.grey.shade300,
+                      color: theme.colorScheme.surfaceVariant, 
                       child: const Center(child: Text("No Image")),
                     ),
                   ),
@@ -73,21 +72,21 @@ class PropertyCard extends StatelessWidget {
                     children: [
                       Text(
                         property.address,
-                        style: const TextStyle(
-                          fontSize: 16,
+                        style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         "${property.city}, ${property.state}",
-                        style: const TextStyle(color: Colors.grey),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.hintColor, 
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         "\$${property.formattedPrice}",
-                        style: const TextStyle(
-                          fontSize: 18,
+                        style: theme.textTheme.titleLarge?.copyWith(
                           color: Colors.green,
                           fontWeight: FontWeight.bold,
                         ),
@@ -95,10 +94,12 @@ class PropertyCard extends StatelessWidget {
                       const SizedBox(height: 6),
                       Text(
                         "${property.beds} beds • ${property.baths} baths • ${property.sqft} sqft",
-                        style: const TextStyle(color: Colors.grey),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.hintColor,
+                        ),
                       ),
 
-                      // 🔲 COMPARE BUTTON ROW (only if compare is used)
+                      // COMPARE BUTTON ROW
                       if (onCompareToggle != null) ...[
                         const SizedBox(height: 8),
                         Align(
@@ -109,14 +110,19 @@ class PropertyCard extends StatelessWidget {
                               isCompared
                                   ? Icons.check_circle
                                   : Icons.radio_button_unchecked,
-                              color: isCompared ? Colors.blue : Colors.grey,
+                              color: isCompared
+                                  ? theme.colorScheme.primary
+                                  : theme.hintColor,
                               size: 20,
                             ),
                             label: Text(
                               isCompared
                                   ? "Selected to compare"
                                   : "Compare",
-                              style: const TextStyle(fontSize: 13),
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: theme.textTheme.bodyMedium?.color,
+                              ),
                             ),
                           ),
                         ),
@@ -136,13 +142,13 @@ class PropertyCard extends StatelessWidget {
               onTap: onFavoriteToggle,
               child: Container(
                 padding: const EdgeInsets.all(6),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface, 
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   Icons.favorite,
-                  color: isFavorite ? Colors.red : Colors.grey,
+                  color: isFavorite ? Colors.red : theme.disabledColor,
                   size: 24,
                 ),
               ),

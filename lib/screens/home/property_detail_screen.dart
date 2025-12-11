@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/property.dart';
 import '../../services/property_service.dart';
-import '../chat/chat_screen.dart'; // ADD THIS IMPORT
+import '../chat/chat_screen.dart';
 import 'gallery_screen.dart';
 
 class PropertyDetailScreen extends StatefulWidget {
@@ -36,8 +36,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
   }
 
   Future<void> loadImages() async {
-    final result =
-        await service.fetchGalleryPhotos(widget.property.propertyId);
+    final result = await service.fetchGalleryPhotos(widget.property.propertyId);
 
     if (!mounted) return;
     setState(() {
@@ -56,9 +55,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     }
 
     final nowFav = !isFavorite;
-    setState(() {
-      isFavorite = nowFav;
-    });
+    setState(() => isFavorite = nowFav);
 
     try {
       if (nowFav) {
@@ -68,52 +65,59 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
       }
     } catch (_) {
       if (!mounted) return;
-      setState(() {
-        isFavorite = !nowFav;
-      });
+      setState(() => isFavorite = !nowFav);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final p = widget.property;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text(p.address),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+        title: Text(
+          p.address,
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        backgroundColor: theme.appBarTheme.backgroundColor ?? theme.cardColor,
+        foregroundColor: theme.appBarTheme.foregroundColor ?? theme.primaryColor,
         elevation: 1,
         actions: [
           IconButton(
             icon: Icon(
               isFavorite ? Icons.favorite : Icons.favorite_border,
-              color: Colors.red,
+              color: isFavorite ? Colors.red : theme.iconTheme.color,
             ),
             onPressed: toggleFavorite,
           )
         ],
       ),
+
       body: loading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  /// MAIN IMAGE
                   Image.network(
                     photos.isNotEmpty ? photos.first : p.cardImage,
                     width: double.infinity,
                     height: 250,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const SizedBox(
+                    errorBuilder: (_, __, ___) => Container(
                       height: 250,
-                      child: Center(child: Text("No Image")),
+                      color: theme.colorScheme.surfaceVariant,
+                      child: const Center(child: Text("No Image")),
                     ),
                   ),
                   const SizedBox(height: 12),
 
-                  // --- GALLERY ---
+                  /// GALLERY
                   if (photos.length > 1)
                     SizedBox(
                       height: 120,
@@ -137,6 +141,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                               width: 150,
                               margin: const EdgeInsets.symmetric(horizontal: 8),
                               decoration: BoxDecoration(
+                                color: theme.colorScheme.surfaceVariant,
                                 borderRadius: BorderRadius.circular(10),
                                 image: DecorationImage(
                                   image: NetworkImage(photos[i]),
@@ -151,13 +156,12 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
 
                   const SizedBox(height: 20),
 
-                  // PRICE
+                  /// PRICE
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 15),
                     child: Text(
                       "\$${p.formattedPrice}",
-                      style: const TextStyle(
-                        fontSize: 30,
+                      style: theme.textTheme.headlineMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: Colors.green,
                       ),
@@ -165,31 +169,30 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                   ),
                   const SizedBox(height: 8),
 
-                  // BEDS / BATHS
+                  /// BEDS / BATHS / SQFT
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 15),
                     child: Text(
                       "${p.beds} beds • ${p.baths} baths • ${p.sqft} sqft",
-                      style: const TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.hintColor,
                       ),
                     ),
                   ),
 
                   const SizedBox(height: 25),
 
-                  // STREET VIEW
+                  /// STREET VIEW
                   if (p.streetViewUrl.isNotEmpty)
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 15),
+                        Padding(
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 15),
                           child: Text(
                             "Google Street View",
-                            style: TextStyle(
-                              fontSize: 18,
+                            style: theme.textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -206,12 +209,12 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
 
                   const SizedBox(height: 30),
 
-                  // --- GOOGLE MAPS BUTTON ---
+                  /// OPEN IN MAPS BUTTON
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 15),
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black,
+                        backgroundColor: theme.colorScheme.primary,
                         minimumSize: const Size(double.infinity, 55),
                       ),
                       onPressed: () {
@@ -219,19 +222,14 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                             "https://www.google.com/maps/search/?api=1&query=${p.latitude},${p.longitude}";
                         PropertyService.openUrl(url);
                       },
-                      child: const Text(
-                        "Open in Google Maps",
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.white,
-                        ),
-                      ),
+                      child: const Text("Open in Google Maps",
+                          style: TextStyle(color: Colors.white)),
                     ),
                   ),
 
                   const SizedBox(height: 15),
 
-                  // --- MESSAGE AGENT BUTTON (NEW) ---
+                  /// MESSAGE AGENT BUTTON
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 15),
                     child: ElevatedButton(
@@ -243,16 +241,13 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => ChatScreen(
-                              propertyId: p.propertyId,
-                            ),
+                            builder: (_) =>
+                                ChatScreen(propertyId: p.propertyId),
                           ),
                         );
                       },
-                      child: const Text(
-                        "Message Agent",
-                        style: TextStyle(fontSize: 16, color: Colors.white),
-                      ),
+                      child: const Text("Message Agent",
+                          style: TextStyle(color: Colors.white)),
                     ),
                   ),
 
