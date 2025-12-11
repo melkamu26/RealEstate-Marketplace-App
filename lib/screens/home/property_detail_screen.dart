@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/property.dart';
 import '../../services/property_service.dart';
+import '../chat/chat_screen.dart'; // ADD THIS IMPORT
 import 'gallery_screen.dart';
 
 class PropertyDetailScreen extends StatefulWidget {
@@ -111,6 +112,8 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
+
+                  // --- GALLERY ---
                   if (photos.length > 1)
                     SizedBox(
                       height: 120,
@@ -132,8 +135,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                             },
                             child: Container(
                               width: 150,
-                              margin:
-                                  const EdgeInsets.symmetric(horizontal: 8),
+                              margin: const EdgeInsets.symmetric(horizontal: 8),
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(10),
                                 image: DecorationImage(
@@ -146,7 +148,10 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                         },
                       ),
                     ),
+
                   const SizedBox(height: 20),
+
+                  // PRICE
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 15),
                     child: Text(
@@ -159,6 +164,8 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
+
+                  // BEDS / BATHS
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 15),
                     child: Text(
@@ -169,7 +176,10 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                       ),
                     ),
                   ),
+
                   const SizedBox(height: 25),
+
+                  // STREET VIEW
                   if (p.streetViewUrl.isNotEmpty)
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -193,7 +203,10 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                         ),
                       ],
                     ),
+
                   const SizedBox(height: 30),
+
+                  // --- GOOGLE MAPS BUTTON ---
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 15),
                     child: ElevatedButton(
@@ -215,6 +228,34 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                       ),
                     ),
                   ),
+
+                  const SizedBox(height: 15),
+
+                  // --- MESSAGE AGENT BUTTON (NEW) ---
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 15),
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        minimumSize: const Size(double.infinity, 55),
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ChatScreen(
+                              propertyId: p.propertyId,
+                            ),
+                          ),
+                        );
+                      },
+                      child: const Text(
+                        "Message Agent",
+                        style: TextStyle(fontSize: 16, color: Colors.white),
+                      ),
+                    ),
+                  ),
+
                   const SizedBox(height: 40),
                 ],
               ),

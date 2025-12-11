@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
 import '../../widgets/custom_textfield.dart';
 import '../../widgets/custom_button.dart';
 import '../../services/auth_service.dart';
 import 'change_password_screen.dart';
+import '../auth/login_screen.dart'; 
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -35,13 +37,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     "VA","WA","WV","WI","WY"
   ];
 
-final List<String> propertyTypes = [
-  "House",
-  "Apartment",
-  "Townhouse",
-  "Multi-Family",
-  "Land / Lot"
-];
+  final List<String> propertyTypes = [
+    "House",
+    "Apartment",
+    "Townhouse",
+    "Multi-Family",
+    "Land / Lot"
+  ];
 
   @override
   void initState() {
@@ -100,6 +102,21 @@ final List<String> propertyTypes = [
         title: const Text("Profile"),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.red),
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
+              if (!mounted) return;
+
+              // CLEAR NAVIGATION STACK → Go to LoginScreen
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                (route) => false,
+              );
+            },
+          )
+        ],
       ),
 
       body: SingleChildScrollView(
@@ -108,6 +125,7 @@ final List<String> propertyTypes = [
           children: [
             CustomTextField(controller: firstName, hint: "First Name"),
             const SizedBox(height: 16),
+
             CustomTextField(controller: lastName, hint: "Last Name"),
             const SizedBox(height: 16),
 
@@ -133,23 +151,22 @@ final List<String> propertyTypes = [
             DropdownButtonFormField(
               value: selectedState,
               items: states
-                    .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                    .toList(),
+                  .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                  .toList(),
               onChanged: (value) => setState(() => selectedState = value!),
               decoration: const InputDecoration(
                 labelText: "State",
                 border: OutlineInputBorder(),
               ),
             ),
-
             const SizedBox(height: 16),
 
             // PROPERTY TYPE DROPDOWN
             DropdownButtonFormField(
               value: selectedPropertyType,
               items: propertyTypes
-                    .map((t) => DropdownMenuItem(value: t, child: Text(t)))
-                    .toList(),
+                  .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+                  .toList(),
               onChanged: (value) => setState(() => selectedPropertyType = value!),
               decoration: const InputDecoration(
                 labelText: "Property Type",
@@ -157,14 +174,14 @@ final List<String> propertyTypes = [
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
 
             CustomButton(
               text: loading ? "Saving..." : "Save Profile",
               onTap: loading ? null : saveProfile,
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
 
             TextButton(
               child: const Text(
