@@ -3,6 +3,7 @@ import '../../widgets/custom_textfield.dart';
 import '../../widgets/custom_button.dart';
 import '../../services/auth_service.dart';
 import 'signup_screen.dart';
+import '../../widgets/bottom_nav_scaffold.dart';  
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -25,7 +26,12 @@ class _LoginScreenState extends State<LoginScreen> {
       await auth.login(email.text.trim(), password.text.trim());
       if (!mounted) return;
 
-      Navigator.pushNamedAndRemoveUntil(context, "/home", (_) => false);
+      // ✅ FIX: remove the broken "/home" navigation
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const BottomNavScaffold()),
+      );
+
     } catch (e) {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(e.toString())));
@@ -62,7 +68,7 @@ class _LoginScreenState extends State<LoginScreen> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => SignupScreen()),
+                  MaterialPageRoute(builder: (_) => const SignupScreen()),
                 );
               },
               child: const Text("Don't have an account? Signup"),

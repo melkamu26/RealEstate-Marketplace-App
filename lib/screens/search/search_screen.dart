@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../services/property_service.dart';
 import '../../models/property.dart';
+import '../../widgets/property_card.dart';   // ✅ Use global widget
 import '../home/property_detail_screen.dart';
-import '../home/home_screen.dart'; // for PropertyCard widget
+import '../home/home_screen.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -15,38 +16,52 @@ class _SearchScreenState extends State<SearchScreen> {
   final city = TextEditingController();
   final maxPrice = TextEditingController();
 
-  String selectedState = "CA";
-  String selectedPropertyType = "House";
+  String selectedState = "GA";
+  String selectedType = "House";
 
-  List<Property> results = [];
   bool loading = false;
+  List<Property> results = [];
+  Set<String> favorites = {};
 
-  final PropertyService service = PropertyService();
+  final service = PropertyService();
 
-  final List<String> states = [
+  final states = [
     "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA",
     "KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ",
     "NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT",
     "VA","WA","WV","WI","WY"
   ];
 
-  final List<String> propertyTypes = [
+  final types = [
     "House",
-    "Condo",
     "Apartment",
-    "Multi-Family",
     "Townhouse",
+    "Multi-Family",
     "Land / Lot"
   ];
 
-  Future<void> search() async {
+  @override
+  void initState() {
+    super.initState();
+    loadFavorites();
+  }
+
+  Future<void> loadFavorites() async {
+    favorites = (await service.getFavorites()).toSet();
+    setState(() {});
+  }
+
+  Future<void> runSearch() async {
     setState(() => loading = true);
+
+    String price =
+        maxPrice.text.trim().isEmpty ? "999999999" : maxPrice.text.trim();
 
     results = await service.searchProperties(
       city: city.text.trim(),
       state: selectedState,
-      maxPrice: maxPrice.text.trim(),
-      propertyType: selectedPropertyType,
+      maxPrice: price,
+      propertyType: selectedType,
     );
 
     setState(() => loading = false);
@@ -66,24 +81,28 @@ class _SearchScreenState extends State<SearchScreen> {
             DropdownButtonFormField(
               value: selectedState,
               items: states.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
-              onChanged: (value) => setState(() => selectedState = value!),
+              onChanged: (v) => setState(() => selectedState = v!),
               decoration: const InputDecoration(labelText: "State"),
             ),
             const SizedBox(height: 16),
 
-            TextField(controller: maxPrice, decoration: const InputDecoration(hintText: "Max Price")),
+            TextField(
+              controller: maxPrice,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(hintText: "Max Price"),
+            ),
             const SizedBox(height: 16),
 
             DropdownButtonFormField(
-              value: selectedPropertyType,
-              items: propertyTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-              onChanged: (value) => setState(() => selectedPropertyType = value!),
+              value: selectedType,
+              items: types.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+              onChanged: (v) => setState(() => selectedType = v!),
               decoration: const InputDecoration(labelText: "Property Type"),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
             ElevatedButton(
-              onPressed: search,
+              onPressed: runSearch,
               child: const Text("Search"),
             ),
 
@@ -92,20 +111,38 @@ class _SearchScreenState extends State<SearchScreen> {
             loading
                 ? const CircularProgressIndicator()
                 : Column(
-                    children: results
-                        .map((p) => GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => PropertyDetailScreen(property: p),
-                                  ),
-                                );
-                              },
-                              child: PropertyCard(property: p),
-                            ))
-                        .toList(),
-                  ),
+                    children: results.map((p) {
+                      return PropertyCard(
+                        property: p,
+                        isFavorite: favorites.contains(p.propertyId),
+
+                        // FAVORITE TOGGLE
+                        onFavoriteToggle: () async {
+                          final isFav = favorites.contains(p.propertyId);
+
+                          if (isFav) {
+                            await service.removeFavorite(p.propertyId);
+                            favorites.remove(p.propertyId);
+                          } else {
+                            await service.addFavorite(p);
+                            favorites.add(p.propertyId);
+                          }
+
+                          setState(() {});
+                        },
+
+                        
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => PropertyDetailScreen(property: p),
+                            ),
+                          );
+                        },
+                      );
+                    }).toList(),
+                  )
           ],
         ),
       ),

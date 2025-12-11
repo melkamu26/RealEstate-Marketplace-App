@@ -1,7 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
-
 import '../../models/property.dart';
 import '../../services/property_service.dart';
 import 'gallery_screen.dart';
@@ -16,34 +13,63 @@ class PropertyDetailScreen extends StatefulWidget {
 }
 
 class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
-  bool loadingGallery = true;
+  final PropertyService service = PropertyService();
+
+  List<String> photos = [];
+  bool loading = true;
+  bool isFavorite = false;
 
   @override
   void initState() {
     super.initState();
-    loadGalleryImages();
+    loadFavoriteStatus();
+    loadImages();
   }
 
-  Future<void> loadGalleryImages() async {
-    final photos = await PropertyService().fetchGalleryPhotos(
-      widget.property.propertyId,
-    );
-
+  Future<void> loadFavoriteStatus() async {
+    final exists = await service.isFavorite(widget.property.propertyId);
     if (!mounted) return;
-
     setState(() {
-      widget.property.images = photos;
-      loadingGallery = false;
+      isFavorite = exists;
     });
   }
 
-  Future<void> openMap() async {
-    final url =
-        "https://www.google.com/maps/search/?api=1&query=${widget.property.latitude},${widget.property.longitude}";
-    final uri = Uri.parse(url);
+  Future<void> loadImages() async {
+    final result =
+        await service.fetchGalleryPhotos(widget.property.propertyId);
 
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!mounted) return;
+    setState(() {
+      photos = result;
+      loading = false;
+    });
+  }
+
+  Future<void> toggleFavorite() async {
+    final user = service.user;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please sign in to save favorites")),
+      );
+      return;
+    }
+
+    final nowFav = !isFavorite;
+    setState(() {
+      isFavorite = nowFav;
+    });
+
+    try {
+      if (nowFav) {
+        await service.addFavorite(widget.property);
+      } else {
+        await service.removeFavorite(widget.property.propertyId);
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        isFavorite = !nowFav;
+      });
     }
   }
 
@@ -52,160 +78,147 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     final p = widget.property;
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text(p.address),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
-        elevation: 0,
-      ),
-
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-
-            // MAIN IMAGE
-            SizedBox(
-              height: 260,
-              width: double.infinity,
-              child: Image.network(
-                p.imageUrl,
-                fit: BoxFit.cover,
-              ),
+        elevation: 1,
+        actions: [
+          IconButton(
+            icon: Icon(
+              isFavorite ? Icons.favorite : Icons.favorite_border,
+              color: Colors.red,
             ),
-
-            const SizedBox(height: 20),
-
-            // GALLERY BUTTON
-            if (loadingGallery)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  child: CircularProgressIndicator(),
-                ),
-              )
-            else if (p.images.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => GalleryScreen(images: p.images),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blueGrey[900],
-                    minimumSize: const Size(double.infinity, 50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: const Text(
-                    "View Photo Gallery",
-                    style: TextStyle(fontSize: 16, color: Colors.white),
-                  ),
-                ),
-              ),
-
-            const SizedBox(height: 20),
-
-            // STREET VIEW IMAGE
-            if (p.streetViewUrl != null && p.streetViewUrl!.isNotEmpty)
-              Stack(
+            onPressed: toggleFavorite,
+          )
+        ],
+      ),
+      body: loading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(
-                    height: 200,
+                  Image.network(
+                    photos.isNotEmpty ? photos.first : p.cardImage,
                     width: double.infinity,
-                    child: Image.network(
-                      p.streetViewUrl!,
-                      fit: BoxFit.cover,
+                    height: 250,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const SizedBox(
+                      height: 250,
+                      child: Center(child: Text("No Image")),
                     ),
                   ),
-                  Positioned(
-                    top: 10,
-                    left: 10,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
+                  const SizedBox(height: 12),
+                  if (photos.length > 1)
+                    SizedBox(
+                      height: 120,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: photos.length,
+                        itemBuilder: (_, i) {
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => GalleryScreen(
+                                    images: photos,
+                                    startIndex: i,
+                                  ),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              width: 150,
+                              margin:
+                                  const EdgeInsets.symmetric(horizontal: 8),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(10),
+                                image: DecorationImage(
+                                  image: NetworkImage(photos[i]),
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
                       ),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.6),
-                        borderRadius: BorderRadius.circular(8),
+                    ),
+                  const SizedBox(height: 20),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 15),
+                    child: Text(
+                      "\$${p.formattedPrice}",
+                      style: const TextStyle(
+                        fontSize: 30,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
                       ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 15),
+                    child: Text(
+                      "${p.beds} beds • ${p.baths} baths • ${p.sqft} sqft",
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 25),
+                  if (p.streetViewUrl.isNotEmpty)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 15),
+                          child: Text(
+                            "Google Street View",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Image.network(
+                          p.streetViewUrl,
+                          width: double.infinity,
+                          height: 220,
+                          fit: BoxFit.cover,
+                        ),
+                      ],
+                    ),
+                  const SizedBox(height: 30),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 15),
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.black,
+                        minimumSize: const Size(double.infinity, 55),
+                      ),
+                      onPressed: () {
+                        final url =
+                            "https://www.google.com/maps/search/?api=1&query=${p.latitude},${p.longitude}";
+                        PropertyService.openUrl(url);
+                      },
                       child: const Text(
-                        "Google Street View",
+                        "Open in Google Maps",
                         style: TextStyle(
+                          fontSize: 16,
                           color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
                   ),
+                  const SizedBox(height: 40),
                 ],
               ),
-
-            const SizedBox(height: 20),
-
-            // PRICE
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                "\$${p.price}",
-                style: const TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.green,
-                ),
-              ),
             ),
-
-            const SizedBox(height: 10),
-
-            // BASIC DETAILS
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                "${p.beds} beds • ${p.baths} baths • ${p.sqft} sqft",
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey,
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 25),
-
-            // OPEN GOOGLE MAPS BUTTON
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: ElevatedButton(
-                onPressed: openMap,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black,
-                  minimumSize: const Size(double.infinity, 52),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: const Text(
-                  "Open in Google Maps",
-                  style: TextStyle(fontSize: 16, color: Colors.white),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 40),
-          ],
-        ),
-      ),
     );
   }
 }
-
-
-

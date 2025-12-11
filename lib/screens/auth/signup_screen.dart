@@ -19,7 +19,6 @@ class _SignupScreenState extends State<SignupScreen> {
   final lastName = TextEditingController();
   final email = TextEditingController();
   final password = TextEditingController();
-
   final budget = TextEditingController();
   final preferredCity = TextEditingController();
 
@@ -36,14 +35,13 @@ class _SignupScreenState extends State<SignupScreen> {
     "VA","WA","WV","WI","WY"
   ];
 
-  final List<String> propertyTypes = [
-    "House",
-    "Condo",
-    "Apartment",
-    "Townhouse",
-    "Multi-Family",
-    "Land / Lot"
-  ];
+final List<String> propertyTypes = [
+  "House",
+  "Apartment",
+  "Townhouse",
+  "Multi-Family",
+  "Land / Lot"
+];
 
   Future<void> signupUser() async {
     setState(() => loading = true);
@@ -109,19 +107,20 @@ class _SignupScreenState extends State<SignupScreen> {
             CustomTextField(controller: preferredCity, hint: "Preferred City"),
             const SizedBox(height: 16),
 
-            // STATE DROPDOWN
             DropdownButtonFormField(
               value: selectedState,
-              items: states.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+              items:
+                  states.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
               onChanged: (v) => setState(() => selectedState = v!),
               decoration: const InputDecoration(labelText: "State"),
             ),
             const SizedBox(height: 16),
 
-            // PROPERTY TYPE DROPDOWN
             DropdownButtonFormField(
               value: selectedPropertyType,
-              items: propertyTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+              items: propertyTypes
+                  .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+                  .toList(),
               onChanged: (v) => setState(() => selectedPropertyType = v!),
               decoration: const InputDecoration(labelText: "Property Type"),
             ),

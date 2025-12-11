@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../models/property.dart';
 import '../../services/property_service.dart';
+import '../../widgets/property_card.dart';          // USE GLOBAL CARD
 import 'property_detail_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -17,17 +18,24 @@ class _HomeScreenState extends State<HomeScreen> {
   final PropertyService service = PropertyService();
 
   List<Property> listings = [];
+  Set<String> favorites = {};
   bool loading = true;
 
   String userCity = "";
   String userBudget = "";
   String userType = "";
-  String userState = ""; 
+  String userState = "";
 
   @override
   void initState() {
     super.initState();
     loadUserPreferences();
+    loadFavorites();
+  }
+
+  Future<void> loadFavorites() async {
+    favorites = await service.getFavorites();
+    setState(() {});
   }
 
   Future<void> loadUserPreferences() async {
@@ -39,38 +47,34 @@ class _HomeScreenState extends State<HomeScreen> {
         .doc(user.uid)
         .get();
 
-    if (doc.exists) {
-      userCity = doc["preferredCity"] ?? "";
-      userBudget = doc["budget"] ?? "";
-      userType = doc["propertyType"] ?? "";
-      userState = doc["state"] ?? ""; 
-    }
+    final data = doc.data() ?? {};
 
-    await loadListings();
+    userCity = data["preferredCity"] ?? "";
+    userBudget = data["budget"] ?? "";
+    userType = data["propertyType"] ?? "";
+    userState = data["state"] ?? "";
+
+    loadListings();
   }
 
   Future<void> loadListings() async {
     List<Property> data;
 
+    String price = userBudget.isEmpty ? "999999999" : userBudget;
+
     if (userCity.isNotEmpty ||
+        userState.isNotEmpty ||
         userBudget.isNotEmpty ||
-        userType.isNotEmpty ||
-        userState.isNotEmpty) 
-    {
-      // 🔥 Use advanced search
+        userType.isNotEmpty) {
       data = await service.searchProperties(
         city: userCity,
-        maxPrice: userBudget,
+        state: userState,
+        maxPrice: price,
         propertyType: userType,
-        state: userState, // 
       );
-    } 
-    else {
-      // Show default listings
+    } else {
       data = await service.fetchListings();
     }
-
-    if (!mounted) return;
 
     setState(() {
       listings = data;
@@ -83,10 +87,8 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Recommended Properties"),
-        centerTitle: true,
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
-        elevation: 0,
       ),
       body: loading
           ? const Center(child: CircularProgressIndicator())
@@ -95,110 +97,39 @@ class _HomeScreenState extends State<HomeScreen> {
               : ListView.builder(
                   padding: const EdgeInsets.all(12),
                   itemCount: listings.length,
-                  itemBuilder: (context, i) {
-                    final property = listings[i];
+                  itemBuilder: (_, i) {
+                    final p = listings[i];
 
-                    return GestureDetector(
+                    return PropertyCard(
+                      property: p,
+                      isFavorite: favorites.contains(p.propertyId),
+
+                      // ❤️ Favorite toggle
+                      onFavoriteToggle: () async {
+                        final isFav = favorites.contains(p.propertyId);
+
+                        if (isFav) {
+                          await service.removeFavorite(p.propertyId);
+                          favorites.remove(p.propertyId);
+                        } else {
+                          await service.addFavorite(p);
+                          favorites.add(p.propertyId);
+                        }
+                        setState(() {});
+                      },
+
+                      // Tap card opens detail page
                       onTap: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) =>
-                                PropertyDetailScreen(property: property),
+                            builder: (_) => PropertyDetailScreen(property: p),
                           ),
                         );
                       },
-                      child: PropertyCard(property: property),
                     );
                   },
                 ),
-    );
-  }
-}
-
-class PropertyCard extends StatelessWidget {
-  final Property property;
-
-  const PropertyCard({super.key, required this.property});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            blurRadius: 6,
-            offset: const Offset(0, 3),
-            color: Colors.black.withOpacity(0.08),
-          )
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Image
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            child: Image.network(
-              property.imageUrl,
-              height: 180,
-              width: double.infinity,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const SizedBox(
-                height: 180,
-                child: Center(child: Text("No Image")),
-              ),
-            ),
-          ),
-
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  property.address,
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-
-                const SizedBox(height: 4),
-
-                Text(
-                  "${property.city}, ${property.state}",
-                  style: const TextStyle(color: Colors.grey),
-                ),
-
-                const SizedBox(height: 8),
-
-                Text(
-                  "\$${property.price}",
-                  style: const TextStyle(
-                    fontSize: 18,
-                    color: Colors.green,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-
-                const SizedBox(height: 6),
-
-                Text(
-                  "${property.beds} beds • ${property.baths} baths • ${property.sqft} sqft",
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
-                ),
-              ],
-            ),
-          )
-        ],
-      ),
     );
   }
 }

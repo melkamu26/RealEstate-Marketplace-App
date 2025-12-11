@@ -14,11 +14,12 @@ class BottomNavScaffold extends StatefulWidget {
 class _BottomNavScaffoldState extends State<BottomNavScaffold> {
   int _index = 0;
 
-  final _screens = const [
-    HomeScreen(),
-    SearchScreen(),
-    FavoritesScreen(),
-    ProfileScreen(),
+  // Remove const — FavoritesScreen cannot be const
+  final List<Widget> _screens = [
+    const HomeScreen(),
+    const SearchScreen(),
+    FavoritesScreen(),     // NOT const — FIXED
+    const ProfileScreen(),
   ];
 
   @override

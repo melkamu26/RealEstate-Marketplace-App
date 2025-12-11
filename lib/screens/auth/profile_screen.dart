@@ -35,14 +35,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     "VA","WA","WV","WI","WY"
   ];
 
-  final List<String> propertyTypes = [
-    "House",
-    "Condo",
-    "Multi-Family",
-    "Apartment",
-    "Townhouse",
-    "Land / Lot",
-  ];
+final List<String> propertyTypes = [
+  "House",
+  "Apartment",
+  "Townhouse",
+  "Multi-Family",
+  "Land / Lot"
+];
 
   @override
   void initState() {
