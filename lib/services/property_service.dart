@@ -21,6 +21,13 @@ class PropertyService {
           .doc(user!.uid)
           .collection("favorites");
 
+  // Compare collection
+  CollectionReference<Map<String, dynamic>> get compareRef =>
+      FirebaseFirestore.instance
+          .collection("users")
+          .doc(user!.uid)
+          .collection("compare");
+
   // Open URL
   static Future<void> openUrl(String url) async {
     final uri = Uri.parse(url);
@@ -29,7 +36,10 @@ class PropertyService {
     }
   }
 
-  //  Fetch Home Listings
+  // ---------------------------
+  // Fetch Home Listings
+  // ---------------------------
+
   Future<List<Property>> fetchListings() async {
     final url = Uri.parse("$baseURL/getListings");
     final res = await http.get(url);
@@ -39,6 +49,7 @@ class PropertyService {
 
     List<Property> list = results.map((e) => Property.fromJson(e)).toList();
 
+    // Remove duplicates
     final Map<String, Property> unique = {};
     for (final p in list) {
       unique[p.propertyId] = p;
@@ -47,7 +58,10 @@ class PropertyService {
     return unique.values.toList();
   }
 
+  // ---------------------------
   // Search Properties
+  // ---------------------------
+
   Future<List<Property>> searchProperties({
     required String city,
     required String state,
@@ -90,7 +104,10 @@ class PropertyService {
     return unique.values.toList();
   }
 
-  // Fetch Gallery Photos
+  // ---------------------------
+  // Gallery Photos
+  // ---------------------------
+
   Future<List<String>> fetchGalleryPhotos(String propertyId) async {
     final url = Uri.parse("$baseURL/getPropertyPhotos?property_id=$propertyId");
 
@@ -99,34 +116,72 @@ class PropertyService {
 
     final json = jsonDecode(res.body);
     final photos = json["photos"];
-
     if (photos == null) return [];
 
     return List<String>.from(photos.map((p) => Property.fixHD(p)));
   }
 
-  //  Add Favorite (FIXED to save correct image)
+  // ---------------------------
+  // FAVORITES
+  // ---------------------------
+
   Future<void> addFavorite(Property p) async {
     await favRef.doc(p.propertyId).set({
       ...p.toMap(),
-      "imageUrl": p.cardImage, // force correct image
+      "imageUrl": p.cardImage,
     });
   }
 
-  // Remove Favorite
   Future<void> removeFavorite(String id) async {
     await favRef.doc(id).delete();
   }
 
-  // Load Favorite IDs
   Future<Set<String>> getFavorites() async {
     final snap = await favRef.get();
     return snap.docs.map((d) => d.id).toSet();
   }
 
-  // Check Favorite
   Future<bool> isFavorite(String id) async {
     final doc = await favRef.doc(id).get();
     return doc.exists;
+  }
+
+  // ---------------------------
+  // COMPARISON FEATURE
+  // ---------------------------
+
+  Future<Set<String>> getCompareList() async {
+    final snap = await compareRef.get();
+    return snap.docs.map((d) => d.id).toSet();
+  }
+
+  Future<void> addToCompare(Property p) async {
+    await compareRef.doc(p.propertyId).set({
+      ...p.toMap(),
+      "imageUrl": p.cardImage,
+    });
+  }
+
+  Future<void> removeFromCompare(String id) async {
+    await compareRef.doc(id).delete();
+  }
+
+  Future<bool> isInCompare(String id) async {
+    final doc = await compareRef.doc(id).get();
+    return doc.exists;
+  }
+
+  // Load full compared properties
+  Future<List<Property>> loadComparedProperties() async {
+    final snap = await compareRef.get();
+    return snap.docs.map((d) => Property.fromMap(d.data())).toList();
+  }
+
+  // Clear compare list
+  Future<void> clearCompare() async {
+    final snap = await compareRef.get();
+    for (var doc in snap.docs) {
+      await doc.reference.delete();
+    }
   }
 }

@@ -3,9 +3,17 @@ import '../models/property.dart';
 
 class PropertyCard extends StatelessWidget {
   final Property property;
+
+  //  favorites
   final bool isFavorite;
   final VoidCallback? onFavoriteToggle;
-  final VoidCallback? onTap; // <-- Added so navigation works everywhere
+
+  // tap whole card
+  final VoidCallback? onTap;
+
+  //  compare
+  final bool isCompared;
+  final VoidCallback? onCompareToggle;
 
   const PropertyCard({
     super.key,
@@ -13,12 +21,14 @@ class PropertyCard extends StatelessWidget {
     this.isFavorite = false,
     this.onFavoriteToggle,
     this.onTap,
+    this.isCompared = false,
+    this.onCompareToggle,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap, // <-- This ensures navigation ALWAYS works
+      onTap: onTap,
       child: Stack(
         children: [
           Container(
@@ -37,9 +47,11 @@ class PropertyCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // IMAGE
                 ClipRRect(
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(12)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(12),
+                  ),
                   child: Image.network(
                     property.cardImage,
                     height: 180,
@@ -53,21 +65,25 @@ class PropertyCard extends StatelessWidget {
                   ),
                 ),
 
+                // TEXT + COMPARE
                 Padding(
                   padding: const EdgeInsets.all(12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(property.address,
-                          style: const TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.w600)),
+                      Text(
+                        property.address,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                       const SizedBox(height: 4),
-
-                      Text("${property.city}, ${property.state}",
-                          style: const TextStyle(color: Colors.grey)),
-
+                      Text(
+                        "${property.city}, ${property.state}",
+                        style: const TextStyle(color: Colors.grey),
+                      ),
                       const SizedBox(height: 8),
-
                       Text(
                         "\$${property.formattedPrice}",
                         style: const TextStyle(
@@ -76,13 +92,35 @@ class PropertyCard extends StatelessWidget {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-
                       const SizedBox(height: 6),
-
                       Text(
                         "${property.beds} beds • ${property.baths} baths • ${property.sqft} sqft",
                         style: const TextStyle(color: Colors.grey),
                       ),
+
+                      // 🔲 COMPARE BUTTON ROW (only if compare is used)
+                      if (onCompareToggle != null) ...[
+                        const SizedBox(height: 8),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton.icon(
+                            onPressed: onCompareToggle,
+                            icon: Icon(
+                              isCompared
+                                  ? Icons.check_circle
+                                  : Icons.radio_button_unchecked,
+                              color: isCompared ? Colors.blue : Colors.grey,
+                              size: 20,
+                            ),
+                            label: Text(
+                              isCompared
+                                  ? "Selected to compare"
+                                  : "Compare",
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -90,7 +128,7 @@ class PropertyCard extends StatelessWidget {
             ),
           ),
 
-          /// ❤️ Favorite Button
+          // ❤️ FAVORITE BUTTON
           Positioned(
             top: 10,
             right: 12,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/search/search_screen.dart';
 import '../screens/favorites/favorites_screen.dart';
+import '../screens/compare/compare_screen.dart';
 import '../screens/auth/profile_screen.dart';
 
 class BottomNavScaffold extends StatefulWidget {
@@ -14,11 +15,12 @@ class BottomNavScaffold extends StatefulWidget {
 class _BottomNavScaffoldState extends State<BottomNavScaffold> {
   int _index = 0;
 
-  // Remove const — FavoritesScreen cannot be const
+  // 5 screens now including Compare
   final List<Widget> _screens = [
     const HomeScreen(),
     const SearchScreen(),
-    FavoritesScreen(),     // NOT const — FIXED
+    FavoritesScreen(),
+    const CompareScreen(),   //  <-- ADDED
     const ProfileScreen(),
   ];
 
@@ -40,6 +42,7 @@ class _BottomNavScaffoldState extends State<BottomNavScaffold> {
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
           BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Favorites'),
+          BottomNavigationBarItem(icon: Icon(Icons.compare_arrows), label: 'Compare'), // <-- ADDED
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
       ),

@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../models/property.dart';
 import '../../services/property_service.dart';
-import '../../widgets/property_card.dart';          // USE GLOBAL CARD
+import '../../widgets/property_card.dart';
 import 'property_detail_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -19,6 +19,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<Property> listings = [];
   Set<String> favorites = {};
+  Set<String> compared = {}; // compared properties (Firestore)
   bool loading = true;
 
   String userCity = "";
@@ -31,10 +32,16 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     loadUserPreferences();
     loadFavorites();
+    loadCompare(); // 🔥 load compare items
   }
 
   Future<void> loadFavorites() async {
     favorites = await service.getFavorites();
+    setState(() {});
+  }
+
+  Future<void> loadCompare() async {
+    compared = await service.getCompareList(); //  loads Firestore list
     setState(() {});
   }
 
@@ -90,6 +97,7 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
       ),
+
       body: loading
           ? const Center(child: CircularProgressIndicator())
           : listings.isEmpty
@@ -102,9 +110,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     return PropertyCard(
                       property: p,
-                      isFavorite: favorites.contains(p.propertyId),
 
-                      // ❤️ Favorite toggle
+                      /// ❤️ FAVORITE TOGGLE
+                      isFavorite: favorites.contains(p.propertyId),
                       onFavoriteToggle: () async {
                         final isFav = favorites.contains(p.propertyId);
 
@@ -118,7 +126,34 @@ class _HomeScreenState extends State<HomeScreen> {
                         setState(() {});
                       },
 
-                      // Tap card opens detail page
+                      /// 🔲 COMPARE TOGGLE
+                      isCompared: compared.contains(p.propertyId),
+                      onCompareToggle: () async {
+                        final isInList = compared.contains(p.propertyId);
+
+                        if (isInList) {
+                          // REMOVE from Firestore ✔
+                          await service.removeFromCompare(p.propertyId);
+                          compared.remove(p.propertyId);
+                        } else {
+                          if (compared.length >= 3) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("You can compare max 3 properties"),
+                              ),
+                            );
+                            return;
+                          }
+
+                          // ADD to Firestore ✔
+                          await service.addToCompare(p);
+                          compared.add(p.propertyId);
+                        }
+
+                        setState(() {});
+                      },
+
+                      /// TAP CARD → DETAILS
                       onTap: () {
                         Navigator.push(
                           context,
