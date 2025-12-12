@@ -95,79 +95,131 @@ class _HomeScreenState extends State<HomeScreen> {
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor:
+          isDark ? Colors.grey.shade900 : const Color(0xFFF4F6FA),
 
       appBar: AppBar(
-        title: const Text("Recommended Properties"),
-        backgroundColor: theme.appBarTheme.backgroundColor ?? theme.colorScheme.surface,
-        foregroundColor: theme.appBarTheme.foregroundColor ?? theme.colorScheme.onSurface,
-        elevation: 1,
+        elevation: 0,
+        centerTitle: true,
+        title: const Text(
+          "Recommended Properties",
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.2,
+          ),
+        ),
+        backgroundColor: theme.scaffoldBackgroundColor,
       ),
 
       body: loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
           : listings.isEmpty
               ? Center(
-                  child: Text(
-                    "No listings found",
-                    style: TextStyle(
-                      color: theme.textTheme.bodyLarge!.color,
-                      fontSize: 16,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.home_work_outlined,
+                          size: 70,
+                          color: isDark
+                              ? Colors.white38
+                              : Colors.black38,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          "No listings found",
+                          style: theme.textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          "Try updating your preferences",
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodyMedium
+                              ?.copyWith(color: Colors.grey),
+                        ),
+                      ],
                     ),
                   ),
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.all(12),
+                  padding:
+                      const EdgeInsets.fromLTRB(16, 16, 16, 32),
                   itemCount: listings.length,
                   itemBuilder: (_, i) {
                     final p = listings[i];
 
-                    return PropertyCard(
-                      property: p,
-
-                      isFavorite: favorites.contains(p.propertyId),
-                      onFavoriteToggle: () async {
-                        final isFav = favorites.contains(p.propertyId);
-                        if (isFav) {
-                          await service.removeFavorite(p.propertyId);
-                          favorites.remove(p.propertyId);
-                        } else {
-                          await service.addFavorite(p);
-                          favorites.add(p.propertyId);
-                        }
-                        setState(() {});
-                      },
-
-                      isCompared: compared.contains(p.propertyId),
-                      onCompareToggle: () async {
-                        final isInList = compared.contains(p.propertyId);
-
-                        if (isInList) {
-                          await service.removeFromCompare(p.propertyId);
-                          compared.remove(p.propertyId);
-                        } else {
-                          if (compared.length >= 3) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text("You can compare max 3 properties"),
-                              ),
-                            );
-                            return;
-                          }
-                          await service.addToCompare(p);
-                          compared.add(p.propertyId);
-                        }
-                        setState(() {});
-                      },
-
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => PropertyDetailScreen(property: p),
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 18),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: isDark
+                                ? Colors.black26
+                                : Colors.black12,
+                            blurRadius: 14,
+                            offset: const Offset(0, 6),
                           ),
-                        );
-                      },
+                        ],
+                      ),
+                      child: PropertyCard(
+                        property: p,
+
+                        isFavorite: favorites.contains(p.propertyId),
+                        onFavoriteToggle: () async {
+                          final isFav =
+                              favorites.contains(p.propertyId);
+                          if (isFav) {
+                            await service
+                                .removeFavorite(p.propertyId);
+                            favorites.remove(p.propertyId);
+                          } else {
+                            await service.addFavorite(p);
+                            favorites.add(p.propertyId);
+                          }
+                          setState(() {});
+                        },
+
+                        isCompared: compared.contains(p.propertyId),
+                        onCompareToggle: () async {
+                          final isInList =
+                              compared.contains(p.propertyId);
+
+                          if (isInList) {
+                            await service
+                                .removeFromCompare(p.propertyId);
+                            compared.remove(p.propertyId);
+                          } else {
+                            if (compared.length >= 3) {
+                              ScaffoldMessenger.of(context)
+                                  .showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                      "You can compare max 3 properties"),
+                                ),
+                              );
+                              return;
+                            }
+                            await service.addToCompare(p);
+                            compared.add(p.propertyId);
+                          }
+                          setState(() {});
+                        },
+
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  PropertyDetailScreen(property: p),
+                            ),
+                          );
+                        },
+                      ),
                     );
                   },
                 ),

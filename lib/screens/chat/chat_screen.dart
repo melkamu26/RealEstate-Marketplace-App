@@ -20,19 +20,55 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isPropertyChat = widget.propertyId != null;
+
     return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text(widget.propertyId == null
-            ? "Support Chat"
-            : "Ask About Property"),
+        centerTitle: true,
+        title: Text(
+          isPropertyChat ? "Ask About Property" : "Support Chat",
+        ),
       ),
+
       body: Column(
         children: [
+          /// PROPERTY CONTEXT
+          if (isPropertyChat)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                boxShadow: [
+                  BoxShadow(
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                    color: Colors.black.withOpacity(0.08),
+                  )
+                ],
+              ),
+              child: Row(
+                children: const [
+                  Icon(Icons.home, size: 20),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      "You’re chatting about this property",
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          /// MESSAGES
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: widget.propertyId == null
-                  ? chat.getSupportMessages()
-                  : chat.getPropertyMessages(widget.propertyId!),
+              stream: isPropertyChat
+                  ? chat.getPropertyMessages(widget.propertyId!)
+                  : chat.getSupportMessages(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
@@ -40,13 +76,11 @@ class _ChatScreenState extends State<ChatScreen> {
 
                 final docs = snapshot.data!.docs;
 
-                // Detect "agent bot" last message
                 if (docs.isNotEmpty) {
                   final lastSender = docs.last["senderId"];
                   agentTyping = lastSender == "agent_bot";
                 }
 
-                // Auto-scroll to bottom
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   if (scrollController.hasClients) {
                     scrollController.jumpTo(
@@ -55,92 +89,156 @@ class _ChatScreenState extends State<ChatScreen> {
                   }
                 });
 
-                return ListView(
+                return ListView.builder(
                   controller: scrollController,
-                  padding: const EdgeInsets.all(12),
-                  children: docs.map((d) {
-                    final data = d.data() as Map<String, dynamic>;
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                  itemCount: docs.length,
+                  itemBuilder: (_, i) {
+                    final data = docs[i].data() as Map<String, dynamic>;
                     final isMe = data["senderId"] == chat.user!.uid;
 
-                    return Column(
-                      crossAxisAlignment:
-                          isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          margin: const EdgeInsets.symmetric(vertical: 6),
-                          decoration: BoxDecoration(
-                            color: isMe ? Colors.blue : Colors.grey.shade300,
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Text(
-                            data["text"],
-                            style: TextStyle(
-                              color: isMe ? Colors.white : Colors.black,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 4),
-                          child: Text(
-                            _formatTime(data["timestamp"]),
-                            style: TextStyle(
-                                fontSize: 12, color: Colors.grey.shade600),
-                          ),
-                        ),
-                      ],
+                    return _chatBubble(
+                      context: context,
+                      text: data["text"],
+                      timestamp: data["timestamp"],
+                      isMe: isMe,
                     );
-                  }).toList(),
+                  },
                 );
               },
             ),
           ),
 
-          // TYPING INDICATOR
+          /// TYPING INDICATOR
           if (agentTyping)
             Padding(
-              padding: const EdgeInsets.only(left: 16, bottom: 8),
+              padding: const EdgeInsets.only(left: 16, bottom: 6),
               child: Row(
                 children: const [
                   Text(
-                    "Agent is typing...",
+                    "Agent is typing…",
                     style: TextStyle(color: Colors.grey),
                   )
                 ],
               ),
             ),
 
-          _messageBox(),
+          /// INPUT BAR
+          _messageInput(theme),
         ],
       ),
     );
   }
 
-  Widget _messageBox() {
+  /// CHAT BUBBLE
+  Widget _chatBubble({
+    required BuildContext context,
+    required String text,
+    required Timestamp timestamp,
+    required bool isMe,
+  }) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Column(
+        crossAxisAlignment:
+            isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        children: [
+          Container(
+            constraints:
+                BoxConstraints(maxWidth: MediaQuery.of(context).size.width * .75),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: isMe
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.surface,
+              borderRadius: BorderRadius.only(
+                topLeft: const Radius.circular(18),
+                topRight: const Radius.circular(18),
+                bottomLeft:
+                    isMe ? const Radius.circular(18) : const Radius.circular(4),
+                bottomRight:
+                    isMe ? const Radius.circular(4) : const Radius.circular(18),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                  color: Colors.black.withOpacity(0.08),
+                )
+              ],
+            ),
+            child: Text(
+              text,
+              style: TextStyle(
+                color: isMe
+                    ? theme.colorScheme.onPrimary
+                    : theme.textTheme.bodyLarge?.color,
+                fontSize: 16,
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _formatTime(timestamp),
+            style: theme.textTheme.bodySmall
+                ?.copyWith(color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// INPUT BAR
+  Widget _messageInput(ThemeData theme) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        boxShadow: [
+          BoxShadow(
+            blurRadius: 12,
+            offset: const Offset(0, -2),
+            color: Colors.black.withOpacity(0.12),
+          )
+        ],
+      ),
       child: Row(
         children: [
           Expanded(
             child: TextField(
               controller: msgController,
-              decoration: const InputDecoration(
-                hintText: "Type your message...",
-                border: OutlineInputBorder(),
+              textInputAction: TextInputAction.send,
+              onSubmitted: (_) => sendMessage(),
+              decoration: InputDecoration(
+                hintText: "Message the agent…",
+                filled: true,
+                fillColor: theme.scaffoldBackgroundColor,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          IconButton(
-            icon: const Icon(Icons.send, color: Colors.blue, size: 30),
-            onPressed: sendMessage,
+          const SizedBox(width: 10),
+          GestureDetector(
+            onTap: sendMessage,
+            child: CircleAvatar(
+              radius: 24,
+              backgroundColor: theme.colorScheme.primary,
+              child: const Icon(Icons.send, color: Colors.white),
+            ),
           ),
         ],
       ),
     );
   }
 
+  /// SEND MESSAGE
   void sendMessage() {
     final text = msgController.text.trim();
     if (text.isEmpty) return;
@@ -154,6 +252,7 @@ class _ChatScreenState extends State<ChatScreen> {
     msgController.clear();
   }
 
+  /// FORMAT TIME
   String _formatTime(Timestamp ts) {
     final dt = ts.toDate();
     return "${dt.hour}:${dt.minute.toString().padLeft(2, '0')}";

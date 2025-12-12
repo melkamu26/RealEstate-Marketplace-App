@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+
 import '../screens/home/home_screen.dart';
 import '../screens/search/search_screen.dart';
 import '../screens/favorites/favorites_screen.dart';
 import '../screens/compare/compare_screen.dart';
 import '../screens/auth/profile_screen.dart';
 import '../screens/chat/chat_screen.dart';
+import '../screens/tour/buyer_tour_requests_screen.dart';
 
 class BottomNavScaffold extends StatefulWidget {
   const BottomNavScaffold({super.key});
@@ -20,11 +22,9 @@ class _BottomNavScaffoldState extends State<BottomNavScaffold> {
     const HomeScreen(),
     const SearchScreen(),
     FavoritesScreen(),
+    BuyerTourRequestsScreen(), 
     const CompareScreen(),
-
-    /// CHAT TAB
-    const ChatScreen(),  // <–– must match your constructor
-
+    const ChatScreen(),
     const ProfileScreen(),
   ];
 
@@ -42,6 +42,7 @@ class _BottomNavScaffoldState extends State<BottomNavScaffold> {
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
           BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Favorites'),
+          BottomNavigationBarItem(icon: Icon(Icons.event_available), label: 'My Tours'),
           BottomNavigationBarItem(icon: Icon(Icons.compare_arrows), label: 'Compare'),
           BottomNavigationBarItem(icon: Icon(Icons.message), label: 'Chat'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),

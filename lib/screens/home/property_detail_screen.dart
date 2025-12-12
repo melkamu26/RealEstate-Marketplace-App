@@ -28,22 +28,13 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
   @override
   void initState() {
     super.initState();
-    loadFavoriteStatus();
-    loadImages();
+    _loadImages();
+    _loadFavorite();
   }
 
-  Future<void> loadFavoriteStatus() async {
-    final exists = await service.isFavorite(widget.property.propertyId);
-    if (!mounted) return;
-    setState(() {
-      isFavorite = exists;
-    });
-  }
-
-  Future<void> loadImages() async {
+  Future<void> _loadImages() async {
     final result =
         await service.fetchGalleryPhotos(widget.property.propertyId);
-
     if (!mounted) return;
     setState(() {
       photos = result;
@@ -51,54 +42,51 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     });
   }
 
-  Future<void> toggleFavorite() async {
-    final user = service.user;
-    if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please sign in to save favorites")),
-      );
-      return;
-    }
+  Future<void> _loadFavorite() async {
+    final fav = await service.isFavorite(widget.property.propertyId);
+    if (!mounted) return;
+    setState(() => isFavorite = fav);
+  }
 
-    final nowFav = !isFavorite;
-    setState(() => isFavorite = nowFav);
+  bool _isLand(String type) {
+    final t = type.toLowerCase();
+    return t.contains("land") || t.contains("lot");
+  }
 
-    try {
-      if (nowFav) {
-        await service.addFavorite(widget.property);
-      } else {
-        await service.removeFavorite(widget.property.propertyId);
-      }
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => isFavorite = !nowFav);
+  String _prettyType(String type) {
+    final t = type.toLowerCase();
+    if (t.contains("condo") || t.contains("apartment")) {
+      return "Apartment / Condo";
     }
+    if (t.contains("town")) return "Townhouse";
+    if (t.contains("land") || t.contains("lot")) return "Land / Lot";
+    return "Single Family";
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final p = widget.property;
+    final theme = Theme.of(context);
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text(
-          p.address,
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        backgroundColor: theme.appBarTheme.backgroundColor,
-        foregroundColor: theme.appBarTheme.foregroundColor,
-        elevation: 1,
+        centerTitle: true,
+        title: Text(p.address),
         actions: [
           IconButton(
             icon: Icon(
               isFavorite ? Icons.favorite : Icons.favorite_border,
-              color: isFavorite ? Colors.red : theme.iconTheme.color,
+              color: isFavorite ? Colors.red : null,
             ),
-            onPressed: toggleFavorite,
+            onPressed: () async {
+              setState(() => isFavorite = !isFavorite);
+              if (isFavorite) {
+                await service.addFavorite(p);
+              } else {
+                await service.removeFavorite(p.propertyId);
+              }
+            },
           ),
         ],
       ),
@@ -108,184 +96,257 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  /// HERO IMAGE
                   Image.network(
                     photos.isNotEmpty ? photos.first : p.cardImage,
+                    height: 280,
                     width: double.infinity,
-                    height: 260,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      height: 260,
-                      color: theme.colorScheme.surfaceVariant,
-                      child: const Center(child: Text("No Image")),
-                    ),
                   ),
 
-                  const SizedBox(height: 16),
-
+                  /// THUMBNAILS
                   if (photos.length > 1)
                     SizedBox(
-                      height: 120,
+                      height: 95,
                       child: ListView.builder(
                         scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.all(12),
                         itemCount: photos.length,
-                        itemBuilder: (_, i) {
-                          return GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => GalleryScreen(
-                                    images: photos,
-                                    startIndex: i,
-                                  ),
-                                ),
-                              );
-                            },
-                            child: Container(
-                              width: 150,
-                              margin:
-                                  const EdgeInsets.symmetric(horizontal: 8),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(10),
-                                image: DecorationImage(
-                                  image: NetworkImage(photos[i]),
-                                  fit: BoxFit.cover,
+                        itemBuilder: (_, i) => GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => GalleryScreen(
+                                  images: photos,
+                                  startIndex: i,
                                 ),
                               ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-
-                  const SizedBox(height: 24),
-
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      "\$${p.formattedPrice}",
-                      style: theme.textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 6),
-
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      "${p.beds} beds • ${p.baths} baths • ${p.sqft} sqft",
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.hintColor,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 28),
-
-                  if (p.streetViewUrl.isNotEmpty)
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 16),
-                          child: Text(
-                            "Google Street View",
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
+                            );
+                          },
+                          child: Container(
+                            width: 120,
+                            margin: const EdgeInsets.only(right: 10),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              image: DecorationImage(
+                                image: NetworkImage(photos[i]),
+                                fit: BoxFit.cover,
+                              ),
                             ),
                           ),
                         ),
-                        const SizedBox(height: 10),
-                        Image.network(
-                          p.streetViewUrl,
-                          width: double.infinity,
-                          height: 220,
-                          fit: BoxFit.cover,
+                      ),
+                    ),
+
+                  /// PRICE CARD
+                  Container(
+                    margin: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.15),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
                         ),
                       ],
                     ),
-
-                  const SizedBox(height: 32),
-
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: theme.colorScheme.primary,
-                        minimumSize: const Size(double.infinity, 56),
-                      ),
-                      onPressed: () {
-                        final url =
-                            "https://www.google.com/maps/search/?api=1&query=${p.latitude},${p.longitude}";
-                        PropertyService.openUrl(url);
-                      },
-                      child: const Text(
-                        "Open in Google Maps",
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 14),
-
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        minimumSize: const Size(double.infinity, 56),
-                      ),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                ChatScreen(propertyId: p.propertyId),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "\$${p.formattedPrice}",
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green,
                           ),
-                        );
-                      },
-                      child: const Text(
-                        "Message Agent",
-                        style: TextStyle(color: Colors.white),
-                      ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          "${p.beds} beds • ${p.baths} baths • ${p.sqft} sqft",
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          p.address,
+                          style: theme.textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        Text("${p.city}, ${p.state}"),
+                      ],
                     ),
                   ),
 
-                  const SizedBox(height: 14),
-
+                  /// INFO GRID
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: theme.colorScheme.secondary,
-                        minimumSize: const Size(double.infinity, 56),
-                      ),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ScheduleTourScreen(
-                              propertyId: p.propertyId,
-                              sellerId: p.sellerId,
+                    child: GridView.count(
+                      crossAxisCount: 2,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: 3,
+                      children: [
+                        _infoBox(Icons.home, _prettyType(p.type)),
+                        _infoBox(Icons.square_foot, "${p.sqft} sqft"),
+                        _infoBox(Icons.bed, "${p.beds} Bedrooms"),
+                        _infoBox(Icons.bathtub, "${p.baths} Bathrooms"),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  /// LOCATION
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      "Location",
+                      style: theme.textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  /// STREET VIEW IMAGE
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: p.streetViewUrl.isNotEmpty
+                          ? Image.network(
+                              p.streetViewUrl,
+                              height: 200,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                            )
+                          : Container(
+                              height: 200,
+                              color: theme.dividerColor.withOpacity(0.15),
+                              child: const Center(
+                                child: Text("No street view available"),
+                              ),
                             ),
-                          ),
-                        );
-                      },
-                      child: const Text(
-                        "Schedule Tour",
-                        style: TextStyle(color: Colors.white),
-                      ),
                     ),
                   ),
 
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 12),
+
+                  /// MAP BUTTONS
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            icon: const Icon(Icons.streetview),
+                            label: const Text("Street View"),
+                            onPressed: p.streetViewUrl.isEmpty
+                                ? null
+                                : () => PropertyService.openUrl(
+                                      p.streetViewUrl,
+                                    ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            icon: const Icon(Icons.map),
+                            label: const Text("Google Maps"),
+                            onPressed: () {
+                              final url =
+                                  "https://www.google.com/maps/search/?api=1&query=${p.latitude},${p.longitude}";
+                              PropertyService.openUrl(url);
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  /// ACTION BUTTONS
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      children: [
+                        ElevatedButton.icon(
+                          icon: const Icon(Icons.chat_bubble_outline),
+                          label: const Text("Message Agent"),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    ChatScreen(propertyId: p.propertyId),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 12),
+
+                        ElevatedButton.icon(
+                          icon: const Icon(Icons.calendar_month),
+                          label: Text(
+                            _isLand(p.type)
+                                ? "Tour Not Available"
+                                : "Schedule Tour",
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _isLand(p.type)
+                                ? theme.disabledColor
+                                : Colors.green.shade600,
+                            foregroundColor: Colors.white,
+                          ),
+                          onPressed: _isLand(p.type)
+                              ? null
+                              : () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => ScheduleTourScreen(
+                                        property: p,
+                                        sellerId: p.sellerId,
+                                      ),
+                                    ),
+                                  );
+                                },
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 30),
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _infoBox(IconData icon, String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.grey.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

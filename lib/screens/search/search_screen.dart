@@ -68,12 +68,10 @@ class _SearchScreenState extends State<SearchScreen>
 
     fadeController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 400),
+      duration: const Duration(milliseconds: 350),
     );
-    fadeAnimation = CurvedAnimation(
-      parent: fadeController,
-      curve: Curves.easeInOut,
-    );
+    fadeAnimation =
+        CurvedAnimation(parent: fadeController, curve: Curves.easeInOut);
   }
 
   @override
@@ -97,17 +95,18 @@ class _SearchScreenState extends State<SearchScreen>
   Future<void> loadRecentSearches() async {
     final prefs = await SharedPreferences.getInstance();
     final list = prefs.getStringList("recent_searches_v2") ?? [];
+
     recentSearches = list
         .map((s) {
           try {
-            final map = jsonDecode(s) as Map<String, dynamic>;
-            return _SearchQuery.fromMap(map);
+            return _SearchQuery.fromMap(jsonDecode(s));
           } catch (_) {
             return null;
           }
         })
         .whereType<_SearchQuery>()
         .toList();
+
     setState(() {});
   }
 
@@ -121,35 +120,27 @@ class _SearchScreenState extends State<SearchScreen>
       recentSearches = recentSearches.take(5).toList();
     }
 
-    final encoded = recentSearches
-        .map((q) => jsonEncode(q.toMap()))
-        .toList();
-
-    await prefs.setStringList("recent_searches_v2", encoded);
+    await prefs.setStringList(
+      "recent_searches_v2",
+      recentSearches.map((e) => jsonEncode(e.toMap())).toList(),
+    );
   }
 
-  // 🔍 MAIN SEARCH (city optional)
   Future<void> runSearch({bool saveQuery = true}) async {
-    final cityText = city.text.trim();
-
     setState(() {
       loading = true;
       hasSearched = true;
     });
 
-    final priceText =
-        maxPrice.text.trim().isEmpty ? "999999999" : maxPrice.text.trim();
-
     final query = _SearchQuery(
-      city: cityText,
+      city: city.text.trim(),
       state: selectedState,
       type: selectedType,
-      maxPrice: priceText,
+      maxPrice:
+          maxPrice.text.trim().isEmpty ? "999999999" : maxPrice.text.trim(),
     );
 
-    if (saveQuery) {
-      await saveRecentSearch(query);
-    }
+    if (saveQuery) await saveRecentSearch(query);
 
     results = await service.searchProperties(
       city: query.city,
@@ -159,7 +150,6 @@ class _SearchScreenState extends State<SearchScreen>
     );
 
     setState(() => loading = false);
-
     fadeController.forward(from: 0);
   }
 
@@ -175,98 +165,121 @@ class _SearchScreenState extends State<SearchScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final suggestedList = citySuggestions[selectedState] ?? [];
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Search Properties")),
+      appBar: AppBar(
+        centerTitle: true,
+        title: const Text(
+          "Search Properties",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
-        child: AnimatedSize(
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeInOut,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextField(
-                controller: city,
-                decoration: const InputDecoration(
-                  hintText: "City (optional)",
-                ),
-              ),
-              if (suggestedList.isNotEmpty && city.text.isEmpty) ...[
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 10,
-                  children: suggestedList.map((c) {
-                    return ActionChip(
-                      label: Text(c),
-                      onPressed: () {
-                        city.text = c;
-                        setState(() {});
-                      },
-                    );
-                  }).toList(),
-                ),
-              ],
-              const SizedBox(height: 16),
-
-              DropdownButtonFormField(
-                value: selectedState,
-                items: states
-                    .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                    .toList(),
-                onChanged: (v) => setState(() => selectedState = v!),
-                decoration: const InputDecoration(labelText: "State"),
-              ),
-              const SizedBox(height: 16),
-
-              TextField(
-                controller: maxPrice,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  hintText: "Max Price (optional)",
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              DropdownButtonFormField(
-                value: selectedType,
-                items: types
-                    .map((t) => DropdownMenuItem(value: t, child: Text(t)))
-                    .toList(),
-                onChanged: (v) => setState(() => selectedType = v!),
-                decoration: const InputDecoration(labelText: "Property Type"),
-              ),
-              const SizedBox(height: 20),
-
-              Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _sectionCard(
+              child: Column(
                 children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: loading ? null : () => runSearch(),
-                      child: loading
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text("Search"),
+                  TextField(
+                    controller: city,
+                    decoration: const InputDecoration(
+                      hintText: "City (optional)",
+                      prefixIcon: Icon(Icons.location_city),
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  TextButton(
-                    onPressed: clearFilters,
-                    child: const Text("Clear"),
+
+                  if (suggestedList.isNotEmpty && city.text.isEmpty) ...[
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      children: suggestedList.map((c) {
+                        return ActionChip(
+                          label: Text(c),
+                          onPressed: () {
+                            city.text = c;
+                            setState(() {});
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ],
+
+                  const SizedBox(height: 16),
+
+                  DropdownButtonFormField(
+                    value: selectedState,
+                    items: states
+                        .map((s) =>
+                            DropdownMenuItem(value: s, child: Text(s)))
+                        .toList(),
+                    onChanged: (v) => setState(() => selectedState = v!),
+                    decoration:
+                        const InputDecoration(labelText: "State"),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  TextField(
+                    controller: maxPrice,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      hintText: "Max Price (optional)",
+                      prefixIcon: Icon(Icons.attach_money),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  DropdownButtonFormField(
+                    value: selectedType,
+                    items: types
+                        .map((t) =>
+                            DropdownMenuItem(value: t, child: Text(t)))
+                        .toList(),
+                    onChanged: (v) => setState(() => selectedType = v!),
+                    decoration:
+                        const InputDecoration(labelText: "Property Type"),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: loading ? null : runSearch,
+                          child: loading
+                              ? const CircularProgressIndicator(
+                                  color: Colors.white)
+                              : const Text("Search"),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      TextButton(
+                        onPressed: clearFilters,
+                        child: const Text("Clear"),
+                      ),
+                    ],
                   ),
                 ],
               ),
+            ),
 
-              const SizedBox(height: 20),
-
-              if (recentSearches.isNotEmpty) ...[
-                const Text(
-                  "Recent Searches",
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 10),
-                ...recentSearches.map((q) {
-                  return ListTile(
+            if (recentSearches.isNotEmpty) ...[
+              const SizedBox(height: 30),
+              Text(
+                "Recent Searches",
+                style: theme.textTheme.titleMedium
+                    ?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+              ...recentSearches.map((q) {
+                return Card(
+                  child: ListTile(
                     leading: const Icon(Icons.history),
                     title: Text(q.label),
                     onTap: () {
@@ -275,21 +288,21 @@ class _SearchScreenState extends State<SearchScreen>
                       selectedType = q.type;
                       maxPrice.text =
                           q.maxPrice == "999999999" ? "" : q.maxPrice;
-
                       setState(() {});
                       runSearch(saveQuery: false);
                     },
-                  );
-                }),
-                const Divider(),
-              ],
-
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                child: _buildMainContent(),
-              ),
+                  ),
+                );
+              }),
             ],
-          ),
+
+            const SizedBox(height: 30),
+
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              child: _buildMainContent(),
+            ),
+          ],
         ),
       ),
     );
@@ -302,16 +315,21 @@ class _SearchScreenState extends State<SearchScreen>
         child: Padding(
           padding: const EdgeInsets.only(top: 80),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: const [
-              Icon(Icons.search, size: 80, color: Colors.grey),
+              Icon(Icons.search, size: 90, color: Colors.grey),
               SizedBox(height: 20),
               Text(
                 "Start Searching",
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               SizedBox(height: 8),
               Text(
-                "Enter a city or choose a state\nto begin your search.",
+                "Find homes, apartments, or land\nby location and budget.",
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 16, color: Colors.grey),
               ),
@@ -328,24 +346,12 @@ class _SearchScreenState extends State<SearchScreen>
     if (results.isEmpty) {
       return FadeTransition(
         opacity: fadeAnimation,
-        child: Center(
+        child: const Center(
           child: Padding(
-            padding: const EdgeInsets.only(top: 60),
-            child: Column(
-              children: const [
-                Icon(Icons.search_off, size: 80, color: Colors.grey),
-                SizedBox(height: 15),
-                Text(
-                  "No properties found",
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                SizedBox(height: 5),
-                Text(
-                  "Try adjusting your filters\nor searching another area.",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
-                ),
-              ],
+            padding: EdgeInsets.only(top: 60),
+            child: Text(
+              "No properties found",
+              style: TextStyle(fontSize: 18),
             ),
           ),
         ),
@@ -361,20 +367,18 @@ class _SearchScreenState extends State<SearchScreen>
             isFavorite: favorites.contains(p.propertyId),
             onFavoriteToggle: () async {
               final isFav = favorites.contains(p.propertyId);
-              if (isFav) {
-                await service.removeFavorite(p.propertyId);
-                favorites.remove(p.propertyId);
-              } else {
-                await service.addFavorite(p);
-                favorites.add(p.propertyId);
-              }
-              setState(() {});
+              isFav
+                  ? await service.removeFavorite(p.propertyId)
+                  : await service.addFavorite(p);
+              setState(() {
+                isFav
+                    ? favorites.remove(p.propertyId)
+                    : favorites.add(p.propertyId);
+              });
             },
             isCompared: compared.contains(p.propertyId),
             onCompareToggle: () async {
-              final isChecked = compared.contains(p.propertyId);
-
-              if (isChecked) {
+              if (compared.contains(p.propertyId)) {
                 await service.removeFromCompare(p.propertyId);
                 compared.remove(p.propertyId);
               } else {
@@ -389,7 +393,6 @@ class _SearchScreenState extends State<SearchScreen>
                 await service.addToCompare(p);
                 compared.add(p.propertyId);
               }
-
               setState(() {});
             },
             onTap: () {
@@ -402,6 +405,17 @@ class _SearchScreenState extends State<SearchScreen>
             },
           );
         }).toList(),
+      ),
+    );
+  }
+
+  Widget _sectionCard({required Widget child}) {
+    return Card(
+      elevation: 6,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: child,
       ),
     );
   }
@@ -423,8 +437,8 @@ class _SearchQuery {
   String get label {
     final cityPart = city.isEmpty ? state : "$city, $state";
     final pricePart =
-        maxPrice == "999999999" ? "Any price" : "under \$$maxPrice";
-    return "$cityPart - $type $pricePart";
+        maxPrice == "999999999" ? "Any price" : "Under \$$maxPrice";
+    return "$cityPart • $type • $pricePart";
   }
 
   Map<String, dynamic> toMap() => {

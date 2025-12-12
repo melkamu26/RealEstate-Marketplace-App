@@ -6,9 +6,7 @@ class TourService {
 
   String get _uid {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      throw Exception("User not logged in");
-    }
+    if (user == null) throw Exception("User not logged in");
     return user.uid;
   }
 
@@ -18,6 +16,9 @@ class TourService {
     required String tourType,
     required String date,
     required String time,
+
+    // ✅ NEW: store property snapshot for easy display later
+    required Map<String, dynamic> propertySnapshot,
   }) async {
     await _db.collection("tour_requests").add({
       "propertyId": propertyId,
@@ -28,6 +29,9 @@ class TourService {
       "time": time,
       "status": "pending",
       "createdAt": FieldValue.serverTimestamp(),
+
+      
+      "propertySnapshot": propertySnapshot,
     });
   }
 
@@ -49,6 +53,10 @@ class TourService {
     await _db.collection("tour_requests").doc(docId).update({
       "status": status,
     });
+  }
+
+  Future<void> cancelTour(String docId) async {
+    await _db.collection("tour_requests").doc(docId).delete();
   }
 
   Future<List<String>> getAvailableSlots({

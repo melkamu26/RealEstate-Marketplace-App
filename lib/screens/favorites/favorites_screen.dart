@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../models/property.dart';
 import '../../services/property_service.dart';
@@ -32,11 +31,8 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       return;
     }
 
-    // Load favorite properties
     final snap = await service.favRef.get();
     properties = snap.docs.map((d) => Property.fromMap(d.data())).toList();
-
-    // Load compare list
     compareList = await service.getCompareList();
 
     setState(() => loading = false);
@@ -44,21 +40,41 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     if (service.user == null) {
       return const Scaffold(
-        body: Center(child: Text("Please sign in to see your favorites")),
+        body: Center(
+          child: Text("Please sign in to see your favorites"),
+        ),
       );
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Favorites"),
+        centerTitle: true,
+        title: const Text(
+          "Favorites",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+        elevation: 1,
       ),
+
       body: loading
           ? const Center(child: CircularProgressIndicator())
+
           : properties.isEmpty
-              ? const Center(child: Text("No favorites yet"))
+              ? _emptyState(isDark)
+
               : ListView.builder(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 16,
+                  ),
                   itemCount: properties.length,
                   itemBuilder: (context, i) {
                     final p = properties[i];
@@ -66,7 +82,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                     return PropertyCard(
                       property: p,
 
-                      // FAVORITE toggle
+                      /// FAVORITE
                       isFavorite: true,
                       onFavoriteToggle: () async {
                         await service.removeFavorite(p.propertyId);
@@ -74,23 +90,22 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                         setState(() {});
                       },
 
-                      // COMPARE toggle
+                      /// COMPARE
                       isCompared: compareList.contains(p.propertyId),
                       onCompareToggle: () async {
-                        final isSelected =
+                        final selected =
                             compareList.contains(p.propertyId);
 
-                        // Remove from compare
-                        if (isSelected) {
+                        if (selected) {
                           await service.removeFromCompare(p.propertyId);
                           compareList.remove(p.propertyId);
                         } else {
-                          // Max 3 compare limit
                           if (compareList.length >= 3) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text(
-                                    "You can compare up to 3 properties"),
+                                  "You can compare up to 3 properties",
+                                ),
                               ),
                             );
                             return;
@@ -103,18 +118,55 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                         setState(() {});
                       },
 
-                      // Tap to open details
+                      /// OPEN DETAILS
                       onTap: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => PropertyDetailScreen(property: p),
+                            builder: (_) =>
+                                PropertyDetailScreen(property: p),
                           ),
                         );
                       },
                     );
                   },
                 ),
+    );
+  }
+
+  /// EMPTY STATE UI
+  Widget _emptyState(bool isDark) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.only(top: 100),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.favorite_border,
+              size: 90,
+              color: isDark ? Colors.grey[600] : Colors.grey[400],
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              "No Favorites Yet",
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              "Save homes you love and\nfind them here anytime.",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
