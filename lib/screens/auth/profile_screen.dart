@@ -8,8 +8,11 @@ import 'package:provider/provider.dart';
 
 import '../../services/auth_service.dart';
 import '../../theme/theme_provider.dart';
-import 'change_password_screen.dart';
 import '../auth/login_screen.dart';
+import 'change_password_screen.dart';
+
+import '../tour/buyer_tour_requests_screen.dart';
+import '../tour/seller_tour_requests_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -21,7 +24,6 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final firstName = TextEditingController();
   final lastName = TextEditingController();
-  final email = TextEditingController();
   final budget = TextEditingController();
   final preferredCity = TextEditingController();
 
@@ -61,14 +63,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     if (!doc.exists) return;
 
-    firstName.text = doc["firstName"] ?? "";
-    lastName.text = doc["lastName"] ?? "";
-    email.text = doc["email"] ?? user!.email ?? "";
-    budget.text = doc["budget"] ?? "";
-    preferredCity.text = doc["preferredCity"] ?? "";
-    selectedState = doc["state"] ?? "CA";
-    selectedPropertyType = doc["propertyType"] ?? "House";
-    profileImageUrl = doc["profileImage"] ?? "";
+    final data = doc.data()!;
+
+    firstName.text = data["firstName"] ?? "";
+    lastName.text = data["lastName"] ?? "";
+    budget.text = data["budget"] ?? "";
+    preferredCity.text = data["preferredCity"] ?? "";
+    selectedState = data["state"] ?? "CA";
+    selectedPropertyType = data["propertyType"] ?? "House";
+    profileImageUrl = data["profileImage"] ?? "";
 
     setState(() {});
   }
@@ -98,7 +101,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> pickProfileImage() async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: ImageSource.gallery);
-
     if (picked == null) return;
 
     final file = File(picked.path);
@@ -106,63 +108,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     await ref.putFile(file);
 
-    String freshUrl = await ref.getDownloadURL();
-    freshUrl = "$freshUrl?v=${DateTime.now().millisecondsSinceEpoch}";
+    String url = await ref.getDownloadURL();
+    url = "$url?v=${DateTime.now().millisecondsSinceEpoch}";
 
     await FirebaseFirestore.instance
         .collection("users")
         .doc(user!.uid)
-        .update({"profileImage": freshUrl});
+        .update({"profileImage": url});
 
     imageCache.clear();
     imageCache.clearLiveImages();
 
-    setState(() {
-      profileImageUrl = freshUrl;
-    });
-  }
-
-  Future<void> deleteAccount() async {
-    bool confirmDelete = false;
-
-    await showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Delete Account"),
-        content: const Text("Are you sure? This cannot be undone."),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-          TextButton(
-            onPressed: () {
-              confirmDelete = true;
-              Navigator.pop(context);
-            },
-            child: const Text("Delete", style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-
-    if (!confirmDelete) return;
-
-    await FirebaseFirestore.instance.collection("users").doc(user!.uid).delete();
-    await user!.delete();
-
-    if (!mounted) return;
-
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-      (_) => false,
-    );
+    setState(() => profileImageUrl = url);
   }
 
   Widget sectionTitle(String text) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8, top: 12),
+      padding: const EdgeInsets.only(top: 24, bottom: 10),
       child: Text(
         text,
         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -170,7 +132,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget modernField(TextEditingController controller, String label) {
+  Widget field(TextEditingController controller, String label) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextField(
@@ -183,27 +145,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget dropdownField(String label, String value, List<String> items,
-      Function(String) onChanged) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: DropdownButtonFormField(
-        value: value,
-        items:
-            items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-        onChanged: (v) => onChanged(v.toString()),
-        decoration: InputDecoration(
-          labelText: label,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final themeProvider = Provider.of<ThemeProvider>(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -214,110 +159,126 @@ class _ProfileScreenState extends State<ProfileScreen> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            Center(
-              child: GestureDetector(
-                onTap: pickProfileImage,
-                child: CircleAvatar(
-                  radius: 55,
-                  backgroundColor:
-                      isDark ? Colors.grey[800] : Colors.grey[300],
-                  backgroundImage: profileImageUrl.isNotEmpty
-                      ? NetworkImage(profileImageUrl)
-                      : null,
-                  child: profileImageUrl.isEmpty
-                      ? Icon(
-                          Icons.person,
-                          size: 55,
-                          color: isDark ? Colors.white : Colors.black,
-                        )
-                      : null,
-                ),
+            GestureDetector(
+              onTap: pickProfileImage,
+              child: CircleAvatar(
+                radius: 56,
+                backgroundColor: isDark ? Colors.grey[800] : Colors.grey[300],
+                backgroundImage:
+                    profileImageUrl.isNotEmpty ? NetworkImage(profileImageUrl) : null,
+                child: profileImageUrl.isEmpty
+                    ? Icon(
+                        Icons.person,
+                        size: 56,
+                        color: isDark ? Colors.white : Colors.black,
+                      )
+                    : null,
               ),
             ),
-            const SizedBox(height: 25),
+
+            sectionTitle("Personal Info"),
+            field(firstName, "First Name"),
+            field(lastName, "Last Name"),
+
             Container(
-              padding: const EdgeInsets.all(20),
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: isDark ? Colors.grey.shade900 : Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  if (!isDark)
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    )
-                ],
+                borderRadius: BorderRadius.circular(12),
+                color: isDark ? Colors.grey[800] : Colors.grey[200],
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  sectionTitle("Personal Info"),
-                  modernField(firstName, "First Name"),
-                  modernField(lastName, "Last Name"),
-                  Text("Email"),
-                  Container(
-                    width: double.infinity,
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    margin: const EdgeInsets.only(top: 6, bottom: 16),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      color: isDark ? Colors.grey[800] : Colors.grey[200],
-                    ),
-                    child: Text(
-                      user?.email ?? "",
-                      style: TextStyle(
-                        color: isDark ? Colors.white70 : Colors.black87,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                  sectionTitle("Preferences"),
-                  modernField(budget, "Budget"),
-                  modernField(preferredCity, "Preferred City"),
-                  dropdownField("State", selectedState, states,
-                      (v) => setState(() => selectedState = v)),
-                  dropdownField("Property Type", selectedPropertyType,
-                      propertyTypes, (v) => setState(() => selectedPropertyType = v)),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: loading ? null : saveProfile,
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: Text(
-                        loading ? "Saving..." : "Save Profile",
-                        style: const TextStyle(fontSize: 17),
-                      ),
-                    ),
-                  ),
-                ],
+              child: Text(
+                user?.email ?? "",
+                style: const TextStyle(fontSize: 16),
               ),
             ),
-            const SizedBox(height: 25),
+
+            sectionTitle("Preferences"),
+            field(budget, "Budget"),
+            field(preferredCity, "Preferred City"),
+
+            DropdownButtonFormField(
+              value: selectedState,
+              items: states
+                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                  .toList(),
+              onChanged: (v) => setState(() => selectedState = v.toString()),
+              decoration: const InputDecoration(labelText: "State"),
+            ),
+
+            const SizedBox(height: 12),
+
+            DropdownButtonFormField(
+              value: selectedPropertyType,
+              items: propertyTypes
+                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                  .toList(),
+              onChanged: (v) =>
+                  setState(() => selectedPropertyType = v.toString()),
+              decoration: const InputDecoration(labelText: "Property Type"),
+            ),
+
+            const SizedBox(height: 20),
+
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: loading ? null : saveProfile,
+                child: Text(loading ? "Saving..." : "Save Profile"),
+              ),
+            ),
+
+            sectionTitle("Buyer"),
+            ListTile(
+              leading: const Icon(Icons.event_available),
+              title: const Text("My Tour Requests"),
+              subtitle: const Text("View your tours"),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => BuyerTourRequestsScreen(),
+                  ),
+                );
+              },
+            ),
+
+            sectionTitle("Seller"),
+            ListTile(
+              leading: const Icon(Icons.calendar_today),
+              title: const Text("Tour Requests"),
+              subtitle: const Text("Approve or decline tours"),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => SellerTourRequestsScreen(),
+                  ),
+                );
+              },
+            ),
+
+            sectionTitle("Settings"),
             SwitchListTile(
               title: const Text("Dark Mode"),
-              value: Provider.of<ThemeProvider>(context).isDarkMode,
-              onChanged: (_) =>
-                  Provider.of<ThemeProvider>(context, listen: false)
-                      .toggleTheme(),
+              value: themeProvider.isDarkMode,
+              onChanged: (_) => themeProvider.toggleTheme(),
             ),
-            const SizedBox(height: 10),
+
             TextButton(
               onPressed: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (_) => const ChangePasswordScreen()),
+                    builder: (_) => const ChangePasswordScreen(),
+                  ),
                 );
               },
               child: const Text("Change Password"),
             ),
+
             TextButton(
               onPressed: () async {
                 await auth.logout();
@@ -328,15 +289,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   (_) => false,
                 );
               },
-              child: const Text("Logout",
-                  style:
-                      TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-            ),
-            TextButton(
-              onPressed: deleteAccount,
-              child: const Text("Delete Account",
-                  style:
-                      TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+              child: const Text(
+                "Logout",
+                style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+              ),
             ),
           ],
         ),

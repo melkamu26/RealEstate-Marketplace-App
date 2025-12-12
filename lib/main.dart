@@ -5,22 +5,22 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 
-import 'theme/theme_provider.dart';        
+import 'theme/theme_provider.dart';
 import 'screens/auth/login_screen.dart';
 import 'widgets/bottom_nav_scaffold.dart';
+import 'services/notification_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Load .env BEFORE anything else
   await dotenv.load();
 
-  // Initialize Firebase (using your firebase_options.dart)
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // Run app WITH provider for dark mode
+  await NotificationService.init();
+
   runApp(
     ChangeNotifierProvider(
       create: (_) => ThemeProvider(),
@@ -40,10 +40,8 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'PropertyPulse',
 
-      // Enable Theme Modes
       themeMode: themeProvider.currentMode,
 
-      // LIGHT THEME
       theme: ThemeData(
         brightness: Brightness.light,
         primaryColor: const Color(0xFF1D3557),
@@ -77,7 +75,6 @@ class MyApp extends StatelessWidget {
         ),
       ),
 
-      // DARK THEME
       darkTheme: ThemeData(
         brightness: Brightness.dark,
         scaffoldBackgroundColor: Colors.grey.shade900,
@@ -100,16 +97,12 @@ class MyApp extends StatelessWidget {
         ),
       ),
 
-      //  Auth listener → auto redirect if logged in
       home: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(),
         builder: (context, snapshot) {
-          // Not logged in → Show login
           if (!snapshot.hasData) {
             return const LoginScreen();
           }
-
-          // Logged in → Show full app
           return const BottomNavScaffold();
         },
       ),

@@ -20,6 +20,8 @@ class Property {
   final String type;
   final String listingUrl;
 
+  final String sellerId;
+
   List<String> images;
 
   Property({
@@ -38,6 +40,7 @@ class Property {
     required this.longitude,
     required this.type,
     required this.listingUrl,
+    required this.sellerId,
     required this.images,
   });
 
@@ -61,7 +64,6 @@ class Property {
     for (int i = 0; i < s.length; i++) {
       buffer.write(s[i]);
       final left = s.length - i - 1;
-
       if (left > 0 && left % 3 == 0) buffer.write(",");
     }
 
@@ -95,11 +97,11 @@ class Property {
       longitude: (coord["lon"] ?? 0).toDouble(),
       type: json["description"]?["type"]?.toString().toLowerCase() ?? "",
       listingUrl: json["href"]?.toString() ?? "",
+      sellerId: json["seller_id"]?.toString() ?? "admin",
       images: [],
     );
   }
 
-  // SAVE TO FIRESTORE
   Map<String, dynamic> toMap() => {
         "propertyId": propertyId,
         "listingId": listingId,
@@ -116,10 +118,10 @@ class Property {
         "longitude": longitude,
         "type": type,
         "listingUrl": listingUrl,
+        "sellerId": sellerId,
         "images": images,
       };
 
-  // LOAD FROM FIRESTORE (SAFE)
   factory Property.fromMap(Map<String, dynamic> map) {
     return Property(
       propertyId: map["propertyId"] ?? "",
@@ -137,6 +139,7 @@ class Property {
       longitude: (map["longitude"] is num) ? map["longitude"].toDouble() : 0.0,
       type: map["type"]?.toString().toLowerCase() ?? "",
       listingUrl: map["listingUrl"] ?? "",
+      sellerId: map["sellerId"] ?? "admin",
       images: (map["images"] is List)
           ? List<String>.from(map["images"])
           : [],

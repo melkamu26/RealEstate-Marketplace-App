@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
+
 import '../../models/property.dart';
 import '../../services/property_service.dart';
 import '../chat/chat_screen.dart';
+import '../tour/schedule_tour_screen.dart';
 import 'gallery_screen.dart';
 
 class PropertyDetailScreen extends StatefulWidget {
   final Property property;
 
-  const PropertyDetailScreen({super.key, required this.property});
+  const PropertyDetailScreen({
+    super.key,
+    required this.property,
+  });
 
   @override
   State<PropertyDetailScreen> createState() => _PropertyDetailScreenState();
@@ -36,7 +41,8 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
   }
 
   Future<void> loadImages() async {
-    final result = await service.fetchGalleryPhotos(widget.property.propertyId);
+    final result =
+        await service.fetchGalleryPhotos(widget.property.propertyId);
 
     if (!mounted) return;
     setState(() {
@@ -83,8 +89,8 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
             fontWeight: FontWeight.w600,
           ),
         ),
-        backgroundColor: theme.appBarTheme.backgroundColor ?? theme.cardColor,
-        foregroundColor: theme.appBarTheme.foregroundColor ?? theme.primaryColor,
+        backgroundColor: theme.appBarTheme.backgroundColor,
+        foregroundColor: theme.appBarTheme.foregroundColor,
         elevation: 1,
         actions: [
           IconButton(
@@ -93,31 +99,29 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
               color: isFavorite ? Colors.red : theme.iconTheme.color,
             ),
             onPressed: toggleFavorite,
-          )
+          ),
         ],
       ),
-
       body: loading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  /// MAIN IMAGE
                   Image.network(
                     photos.isNotEmpty ? photos.first : p.cardImage,
                     width: double.infinity,
-                    height: 250,
+                    height: 260,
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => Container(
-                      height: 250,
+                      height: 260,
                       color: theme.colorScheme.surfaceVariant,
                       child: const Center(child: Text("No Image")),
                     ),
                   ),
-                  const SizedBox(height: 12),
 
-                  /// GALLERY
+                  const SizedBox(height: 16),
+
                   if (photos.length > 1)
                     SizedBox(
                       height: 120,
@@ -139,9 +143,9 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                             },
                             child: Container(
                               width: 150,
-                              margin: const EdgeInsets.symmetric(horizontal: 8),
+                              margin:
+                                  const EdgeInsets.symmetric(horizontal: 8),
                               decoration: BoxDecoration(
-                                color: theme.colorScheme.surfaceVariant,
                                 borderRadius: BorderRadius.circular(10),
                                 image: DecorationImage(
                                   image: NetworkImage(photos[i]),
@@ -154,11 +158,10 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                       ),
                     ),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
 
-                  /// PRICE
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 15),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Text(
                       "\$${p.formattedPrice}",
                       style: theme.textTheme.headlineMedium?.copyWith(
@@ -167,11 +170,11 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
 
-                  /// BEDS / BATHS / SQFT
+                  const SizedBox(height: 6),
+
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 15),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Text(
                       "${p.beds} beds • ${p.baths} baths • ${p.sqft} sqft",
                       style: theme.textTheme.bodyMedium?.copyWith(
@@ -180,16 +183,15 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 25),
+                  const SizedBox(height: 28),
 
-                  /// STREET VIEW
                   if (p.streetViewUrl.isNotEmpty)
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Padding(
                           padding:
-                              const EdgeInsets.symmetric(horizontal: 15),
+                              const EdgeInsets.symmetric(horizontal: 16),
                           child: Text(
                             "Google Street View",
                             style: theme.textTheme.titleMedium?.copyWith(
@@ -207,35 +209,35 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                       ],
                     ),
 
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 32),
 
-                  /// OPEN IN MAPS BUTTON
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 15),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: theme.colorScheme.primary,
-                        minimumSize: const Size(double.infinity, 55),
+                        minimumSize: const Size(double.infinity, 56),
                       ),
                       onPressed: () {
                         final url =
                             "https://www.google.com/maps/search/?api=1&query=${p.latitude},${p.longitude}";
                         PropertyService.openUrl(url);
                       },
-                      child: const Text("Open in Google Maps",
-                          style: TextStyle(color: Colors.white)),
+                      child: const Text(
+                        "Open in Google Maps",
+                        style: TextStyle(color: Colors.white),
+                      ),
                     ),
                   ),
 
-                  const SizedBox(height: 15),
+                  const SizedBox(height: 14),
 
-                  /// MESSAGE AGENT BUTTON
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 15),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue,
-                        minimumSize: const Size(double.infinity, 55),
+                        minimumSize: const Size(double.infinity, 56),
                       ),
                       onPressed: () {
                         Navigator.push(
@@ -246,8 +248,37 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           ),
                         );
                       },
-                      child: const Text("Message Agent",
-                          style: TextStyle(color: Colors.white)),
+                      child: const Text(
+                        "Message Agent",
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: theme.colorScheme.secondary,
+                        minimumSize: const Size(double.infinity, 56),
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ScheduleTourScreen(
+                              propertyId: p.propertyId,
+                              sellerId: p.sellerId,
+                            ),
+                          ),
+                        );
+                      },
+                      child: const Text(
+                        "Schedule Tour",
+                        style: TextStyle(color: Colors.white),
+                      ),
                     ),
                   ),
 

@@ -1,20 +1,69 @@
 require("dotenv").config();
-const functions = require("firebase-functions");
+const admin = require("firebase-admin");
 const fetch = require("node-fetch");
 const cheerio = require("cheerio");
 
-// Upgrade Realtor photo links to HD
+const { onDocumentUpdated } = require("firebase-functions/v2/firestore");
+const { onRequest } = require("firebase-functions/v2/https");
+
+admin.initializeApp();
+
+
+// =============================
+// TOUR STATUS PUSH NOTIFICATION
+// =============================
+
+exports.sendTourNotification = onDocumentUpdated(
+  "tour_requests/{id}",
+  async (event) => {
+    const before = event.data.before.data();
+    const after = event.data.after.data();
+
+    if (!before || !after) return;
+    if (before.status === after.status) return;
+    if (!after.buyerId) return;
+
+    const userSnap = await admin
+      .firestore()
+      .collection("users")
+      .doc(after.buyerId)
+      .get();
+
+    if (!userSnap.exists) return;
+
+    const token = userSnap.data().fcmToken;
+    if (!token) return;
+
+    await admin.messaging().sendToDevice(token, {
+      notification: {
+        title: "Tour Update",
+        body: `Your tour request was ${after.status}`,
+      },
+      data: {
+        tourId: event.params.id,
+        status: after.status,
+      },
+    });
+  }
+);
+
+
+// =============================
+// HELPER
+// =============================
+
 function toHd(url) {
   if (typeof url !== "string") return url;
   return url.replace("s.jpg", "l.jpg");
 }
 
 
-// GET LISTINGS (HOME SCREEN)
+// =============================
+// HOME LISTINGS
+// =============================
 
-exports.getListings = functions.https.onRequest(async (req, res) => {
+exports.getListings = onRequest(async (req, res) => {
   res.set("Access-Control-Allow-Origin", "*");
-  res.set("Access-Control-Allow-Headers", "*");
 
   const apiKey = process.env.REALTY_API_KEY;
 
@@ -31,7 +80,7 @@ exports.getListings = functions.https.onRequest(async (req, res) => {
         body: JSON.stringify({
           limit: 50,
           offset: 0,
-          postal_code: "90004", // Default home feed
+          postal_code: "90004",
           status: ["for_sale", "ready_to_build"],
           sort: { direction: "desc", field: "list_date" },
         }),
@@ -46,18 +95,19 @@ exports.getListings = functions.https.onRequest(async (req, res) => {
 });
 
 
-// SEARCH PROPERTIES (CITY OPTIONAL — FIXED)
+// =============================
+// SEARCH PROPERTIES
+// =============================
 
-exports.searchProperties = functions.https.onRequest(async (req, res) => {
+exports.searchProperties = onRequest(async (req, res) => {
   res.set("Access-Control-Allow-Origin", "*");
-  res.set("Access-Control-Allow-Headers", "*");
 
   const apiKey = process.env.REALTY_API_KEY;
 
   const city = req.query.city?.trim() || "";
   const state = req.query.state?.trim() || "";
   const maxPrice = req.query.maxPrice ? Number(req.query.maxPrice) : undefined;
-  const type = req.query.type || ""; // Home type filter (mapped from Flutter)
+  const type = req.query.type || "";
 
   try {
     let body = {
@@ -67,12 +117,10 @@ exports.searchProperties = functions.https.onRequest(async (req, res) => {
       sort: { direction: "desc", field: "list_date" },
     };
 
-    // 🔥 If user searched with CITY
-    if (city !== "") {
+    if (city) {
       body.city = city;
-      if (state !== "") body.state_code = state;
+      if (state) body.state_code = state;
     } else {
-      // 🔥 If NO city → search entire state
       if (!state) {
         return res.status(400).json({
           error: "State is required when city is empty",
@@ -81,13 +129,9 @@ exports.searchProperties = functions.https.onRequest(async (req, res) => {
       body.state_code = state;
     }
 
-    // Max Price
     if (maxPrice) body.price_max = maxPrice;
-
-    // Property type filter
     if (type) body.home_type = [type];
 
-    // Make request
     const response = await fetch(
       "https://realty-in-us.p.rapidapi.com/properties/v3/list",
       {
@@ -102,34 +146,33 @@ exports.searchProperties = functions.https.onRequest(async (req, res) => {
     );
 
     const data = await response.json();
-    return res.status(200).send(data);
+    res.status(200).send(data);
   } catch (err) {
-    return res.status(500).send({ error: err.toString() });
+    res.status(500).send({ error: err.toString() });
   }
 });
 
 
+// =============================
 // PROPERTY PHOTOS
+// =============================
 
-exports.getPropertyPhotos = functions.https.onRequest(async (req, res) => {
+exports.getPropertyPhotos = onRequest(async (req, res) => {
   res.set("Access-Control-Allow-Origin", "*");
-  res.set("Access-Control-Allow-Headers", "*");
 
   const apiKey = process.env.REALTY_API_KEY;
-
   const propertyId = req.query.property_id;
   const listingUrl = req.query.url;
 
   if (!propertyId && !listingUrl) {
-    return res
-      .status(400)
-      .send({ error: "property_id or url is required" });
+    return res.status(400).send({
+      error: "property_id or url is required",
+    });
   }
 
   try {
     let urls = [];
 
-    // API method
     if (propertyId) {
       const response = await fetch(
         `https://realty-in-us.p.rapidapi.com/properties/v3/detail?property_id=${propertyId}`,
@@ -145,43 +188,27 @@ exports.getPropertyPhotos = functions.https.onRequest(async (req, res) => {
       const data = await response.json();
       const photos = data?.data?.home?.photos ?? [];
 
-      urls = photos
-        .map((p) => p?.href)
-        .filter((u) => !!u)
-        .map((u) => toHd(u));
+      urls = photos.map(p => toHd(p?.href)).filter(Boolean);
     }
 
-    // Fallback scraper
-    if ((!urls || urls.length === 0) && listingUrl) {
-      try {
-        const pageRes = await fetch(listingUrl);
-        const html = await pageRes.text();
-        const $ = cheerio.load(html);
+    if (urls.length === 0 && listingUrl) {
+      const pageRes = await fetch(listingUrl);
+      const html = await pageRes.text();
+      const $ = cheerio.load(html);
 
-        const scraped = new Set();
+      const scraped = new Set();
+      $("img").each((_, el) => {
+        const src = $(el).attr("src") || "";
+        if (src.includes("ap.rdcpix.com")) {
+          scraped.add(toHd(src));
+        }
+      });
 
-        $("img").each((_, el) => {
-          const src = $(el).attr("src") || "";
-          if (src.includes("ap.rdcpix.com")) {
-            scraped.add(toHd(src));
-          }
-        });
-
-        urls = Array.from(scraped);
-      } catch (_) {}
+      urls = Array.from(scraped);
     }
 
-    res.status(200).send({ photos: urls || [] });
+    res.status(200).send({ photos: urls });
   } catch (err) {
     res.status(500).send({ error: err.toString() });
   }
-});
-
-
-// Deprecated Details Endpoint
-
-exports.getPropertyDetails = functions.https.onRequest((req, res) => {
-  res.status(200).send({
-    message: "Deprecated. Use getPropertyPhotos instead.",
-  });
 });

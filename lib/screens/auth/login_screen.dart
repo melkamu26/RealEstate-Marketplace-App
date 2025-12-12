@@ -26,7 +26,7 @@ class _LoginScreenState extends State<LoginScreen> {
       await auth.login(email.text.trim(), password.text.trim());
       if (!mounted) return;
 
-      // ✅ FIX: remove the broken "/home" navigation
+      // remove the broken "/home" navigation
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const BottomNavScaffold()),
