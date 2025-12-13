@@ -22,6 +22,10 @@ class Property {
 
   final String sellerId;
 
+  // ✅ NEW (added)
+  final List<String> agentNames;
+  final String brokerage;
+
   List<String> images;
 
   Property({
@@ -42,6 +46,10 @@ class Property {
     required this.listingUrl,
     required this.sellerId,
     required this.images,
+
+    // ✅ NEW (appended only)
+    required this.agentNames,
+    required this.brokerage,
   });
 
   static String fixHD(String url) {
@@ -81,6 +89,17 @@ class Property {
     final coord = loc["coordinate"] ?? {};
     final primary = json["primary_photo"];
 
+    // ✅ NEW (safe parsing)
+    final advertisers = json["advertisers"] as List? ?? [];
+    final agentNames = advertisers
+        .map((a) => a["name"])
+        .whereType<String>()
+        .toList();
+
+    final branding = json["branding"] as List? ?? [];
+    final brokerage =
+        branding.isNotEmpty ? branding.first["name"] ?? "" : "";
+
     return Property(
       propertyId: json["property_id"]?.toString() ?? "",
       listingId: json["listing_id"]?.toString() ?? "",
@@ -99,6 +118,10 @@ class Property {
       listingUrl: json["href"]?.toString() ?? "",
       sellerId: json["seller_id"]?.toString() ?? "admin",
       images: [],
+
+      // ✅ NEW
+      agentNames: agentNames,
+      brokerage: brokerage,
     );
   }
 
@@ -120,6 +143,10 @@ class Property {
         "listingUrl": listingUrl,
         "sellerId": sellerId,
         "images": images,
+
+        // ✅ NEW
+        "agentNames": agentNames,
+        "brokerage": brokerage,
       };
 
   factory Property.fromMap(Map<String, dynamic> map) {
@@ -135,14 +162,24 @@ class Property {
       sqft: map["sqft"] ?? "0",
       imageUrl: map["imageUrl"] ?? "",
       streetViewUrl: map["streetViewUrl"] ?? "",
-      latitude: (map["latitude"] is num) ? map["latitude"].toDouble() : 0.0,
-      longitude: (map["longitude"] is num) ? map["longitude"].toDouble() : 0.0,
+      latitude: (map["latitude"] is num)
+          ? map["latitude"].toDouble()
+          : 0.0,
+      longitude: (map["longitude"] is num)
+          ? map["longitude"].toDouble()
+          : 0.0,
       type: map["type"]?.toString().toLowerCase() ?? "",
       listingUrl: map["listingUrl"] ?? "",
       sellerId: map["sellerId"] ?? "admin",
       images: (map["images"] is List)
           ? List<String>.from(map["images"])
           : [],
+
+      // 
+      agentNames: (map["agentNames"] is List)
+          ? List<String>.from(map["agentNames"])
+          : [],
+      brokerage: map["brokerage"] ?? "",
     );
   }
 }

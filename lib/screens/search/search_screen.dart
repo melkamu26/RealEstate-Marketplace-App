@@ -52,11 +52,17 @@ class _SearchScreenState extends State<SearchScreen>
     "Land / Lot"
   ];
 
-  final Map<String, List<String>> citySuggestions = {
-    "GA": ["Atlanta", "Savannah", "Augusta", "Athens"],
-    "CA": ["Los Angeles", "San Diego", "San Jose", "Sacramento"],
+  /// ⭐ Famous cities by state
+  final Map<String, List<String>> famousCitiesByState = {
+    "GA": ["Atlanta", "Savannah", "Athens", "Augusta"],
+    "CA": ["Los Angeles", "San Diego", "San Jose", "San Francisco"],
     "TX": ["Houston", "Dallas", "Austin", "San Antonio"],
     "FL": ["Miami", "Orlando", "Tampa", "Jacksonville"],
+    "NY": ["New York", "Buffalo", "Rochester", "Albany"],
+    "IL": ["Chicago", "Naperville", "Aurora"],
+    "AZ": ["Phoenix", "Scottsdale", "Tempe"],
+    "WA": ["Seattle", "Bellevue", "Tacoma"],
+    "MA": ["Boston", "Cambridge", "Worcester"],
   };
 
   @override
@@ -94,17 +100,10 @@ class _SearchScreenState extends State<SearchScreen>
 
   Future<void> loadRecentSearches() async {
     final prefs = await SharedPreferences.getInstance();
-    final list = prefs.getStringList("recent_searches_v2") ?? [];
+    final list = prefs.getStringList("recent_searches_v3") ?? [];
 
     recentSearches = list
-        .map((s) {
-          try {
-            return _SearchQuery.fromMap(jsonDecode(s));
-          } catch (_) {
-            return null;
-          }
-        })
-        .whereType<_SearchQuery>()
+        .map((s) => _SearchQuery.fromMap(jsonDecode(s)))
         .toList();
 
     setState(() {});
@@ -116,12 +115,13 @@ class _SearchScreenState extends State<SearchScreen>
     recentSearches.removeWhere((e) => e.label == q.label);
     recentSearches.insert(0, q);
 
-    if (recentSearches.length > 5) {
-      recentSearches = recentSearches.take(5).toList();
+    /// ✅ keep LAST 3 ONLY
+    if (recentSearches.length > 3) {
+      recentSearches = recentSearches.take(3).toList();
     }
 
     await prefs.setStringList(
-      "recent_searches_v2",
+      "recent_searches_v3",
       recentSearches.map((e) => jsonEncode(e.toMap())).toList(),
     );
   }
@@ -165,9 +165,6 @@ class _SearchScreenState extends State<SearchScreen>
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final suggestedList = citySuggestions[selectedState] ?? [];
-
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
@@ -181,104 +178,132 @@ class _SearchScreenState extends State<SearchScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _sectionCard(
-              child: Column(
-                children: [
-                  TextField(
-                    controller: city,
-                    decoration: const InputDecoration(
-                      hintText: "City (optional)",
-                      prefixIcon: Icon(Icons.location_city),
-                    ),
-                  ),
-
-                  if (suggestedList.isNotEmpty && city.text.isEmpty) ...[
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 8,
-                      children: suggestedList.map((c) {
-                        return ActionChip(
-                          label: Text(c),
-                          onPressed: () {
-                            city.text = c;
-                            setState(() {});
-                          },
-                        );
-                      }).toList(),
-                    ),
-                  ],
-
-                  const SizedBox(height: 16),
-
-                  DropdownButtonFormField(
-                    value: selectedState,
-                    items: states
-                        .map((s) =>
-                            DropdownMenuItem(value: s, child: Text(s)))
-                        .toList(),
-                    onChanged: (v) => setState(() => selectedState = v!),
-                    decoration:
-                        const InputDecoration(labelText: "State"),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  TextField(
-                    controller: maxPrice,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      hintText: "Max Price (optional)",
-                      prefixIcon: Icon(Icons.attach_money),
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  DropdownButtonFormField(
-                    value: selectedType,
-                    items: types
-                        .map((t) =>
-                            DropdownMenuItem(value: t, child: Text(t)))
-                        .toList(),
-                    onChanged: (v) => setState(() => selectedType = v!),
-                    decoration:
-                        const InputDecoration(labelText: "Property Type"),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: loading ? null : runSearch,
-                          child: loading
-                              ? const CircularProgressIndicator(
-                                  color: Colors.white)
-                              : const Text("Search"),
-                        ),
+            /// 🔍 SEARCH CARD
+            Card(
+              elevation: 20,
+              shadowColor: Colors.black.withOpacity(0.45),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: city,
+                      decoration: const InputDecoration(
+                        hintText: "City",
+                        prefixIcon: Icon(Icons.location_city),
                       ),
-                      const SizedBox(width: 12),
-                      TextButton(
-                        onPressed: clearFilters,
-                        child: const Text("Clear"),
+                      onChanged: (_) => setState(() {}),
+                    ),
+
+                    /// ⭐ CITY CHIPS
+                    if (city.text.isEmpty &&
+                        famousCitiesByState[selectedState] != null) ...[
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        children: famousCitiesByState[selectedState]!
+                            .take(4)
+                            .map(
+                              (c) => ActionChip(
+                                label: Text(c),
+                                onPressed: () {
+                                  city.text = c;
+                                  setState(() {});
+                                },
+                              ),
+                            )
+                            .toList(),
                       ),
                     ],
-                  ),
-                ],
+
+                    const SizedBox(height: 16),
+
+                    DropdownButtonFormField(
+                      value: selectedState,
+                      items: states
+                          .map((s) =>
+                              DropdownMenuItem(value: s, child: Text(s)))
+                          .toList(),
+                      onChanged: (v) {
+                        setState(() {
+                          selectedState = v!;
+                          city.clear();
+                        });
+                      },
+                      decoration:
+                          const InputDecoration(labelText: "State"),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    TextField(
+                      controller: maxPrice,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        hintText: "Max Price",
+                        prefixIcon: Icon(Icons.attach_money),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    DropdownButtonFormField(
+                      value: selectedType,
+                      items: types
+                          .map((t) =>
+                              DropdownMenuItem(value: t, child: Text(t)))
+                          .toList(),
+                      onChanged: (v) => setState(() => selectedType = v!),
+                      decoration:
+                          const InputDecoration(labelText: "Property Type"),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: loading ? null : runSearch,
+                            child: loading
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Text("Search"),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        TextButton(
+                          onPressed: clearFilters,
+                          child: const Text("Clear"),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
 
+            /// 🕘 RECENT SEARCHES
             if (recentSearches.isNotEmpty) ...[
-              const SizedBox(height: 30),
-              Text(
+              const SizedBox(height: 26),
+              const Text(
                 "Recent Searches",
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.bold),
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 10),
-              ...recentSearches.map((q) {
-                return Card(
+              ...recentSearches.map(
+                (q) => Card(
+                  elevation: 6,
                   child: ListTile(
                     leading: const Icon(Icons.history),
                     title: Text(q.label),
@@ -292,11 +317,11 @@ class _SearchScreenState extends State<SearchScreen>
                       runSearch(saveQuery: false);
                     },
                   ),
-                );
-              }),
+                ),
+              ),
             ],
 
-            const SizedBox(height: 30),
+            const SizedBox(height: 24),
 
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 300),
@@ -308,30 +333,37 @@ class _SearchScreenState extends State<SearchScreen>
     );
   }
 
+  /// 🟢 MAIN CONTENT
   Widget _buildMainContent() {
     if (!hasSearched) {
-      return Center(
-        key: const ValueKey("idle"),
-        child: Padding(
-          padding: const EdgeInsets.only(top: 80),
+      return Padding(
+        padding: const EdgeInsets.only(top: 36),
+        child: Center(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: const [
-              Icon(Icons.search, size: 90, color: Colors.grey),
-              SizedBox(height: 20),
+              Icon(
+                Icons.search_rounded,
+                size: 96,
+                color: Colors.grey,
+              ),
+              SizedBox(height: 14),
               Text(
-                "Start Searching",
+                "Start searching for homes",
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-              SizedBox(height: 8),
+              SizedBox(height: 6),
               Text(
-                "Find homes, apartments, or land\nby location and budget.",
+                "Search by city and filter by price or type",
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16, color: Colors.grey),
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey,
+                ),
               ),
             ],
           ),
@@ -340,21 +372,16 @@ class _SearchScreenState extends State<SearchScreen>
     }
 
     if (loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Padding(
+        padding: EdgeInsets.only(top: 30),
+        child: Center(child: CircularProgressIndicator()),
+      );
     }
 
     if (results.isEmpty) {
-      return FadeTransition(
-        opacity: fadeAnimation,
-        child: const Center(
-          child: Padding(
-            padding: EdgeInsets.only(top: 60),
-            child: Text(
-              "No properties found",
-              style: TextStyle(fontSize: 18),
-            ),
-          ),
-        ),
+      return const Padding(
+        padding: EdgeInsets.only(top: 30),
+        child: Center(child: Text("No properties found")),
       );
     }
 
@@ -365,36 +392,14 @@ class _SearchScreenState extends State<SearchScreen>
           return PropertyCard(
             property: p,
             isFavorite: favorites.contains(p.propertyId),
+            isCompared: compared.contains(p.propertyId),
             onFavoriteToggle: () async {
-              final isFav = favorites.contains(p.propertyId);
-              isFav
+              favorites.contains(p.propertyId)
                   ? await service.removeFavorite(p.propertyId)
                   : await service.addFavorite(p);
-              setState(() {
-                isFav
-                    ? favorites.remove(p.propertyId)
-                    : favorites.add(p.propertyId);
-              });
-            },
-            isCompared: compared.contains(p.propertyId),
-            onCompareToggle: () async {
-              if (compared.contains(p.propertyId)) {
-                await service.removeFromCompare(p.propertyId);
-                compared.remove(p.propertyId);
-              } else {
-                if (compared.length >= 3) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("You can compare up to 3 properties"),
-                    ),
-                  );
-                  return;
-                }
-                await service.addToCompare(p);
-                compared.add(p.propertyId);
-              }
               setState(() {});
             },
+            onCompareToggle: () async {},
             onTap: () {
               Navigator.push(
                 context,
@@ -405,17 +410,6 @@ class _SearchScreenState extends State<SearchScreen>
             },
           );
         }).toList(),
-      ),
-    );
-  }
-
-  Widget _sectionCard({required Widget child}) {
-    return Card(
-      elevation: 6,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: child,
       ),
     );
   }
@@ -435,7 +429,7 @@ class _SearchQuery {
   });
 
   String get label {
-    final cityPart = city.isEmpty ? state : "$city, $state";
+    final cityPart = city.isEmpty ? state : city;
     final pricePart =
         maxPrice == "999999999" ? "Any price" : "Under \$$maxPrice";
     return "$cityPart • $type • $pricePart";
