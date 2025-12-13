@@ -99,7 +99,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
 
-      ///  APP BAR (CONSISTENT WITH OTHER TABS)
       appBar: AppBar(
         centerTitle: true,
         elevation: 0,
@@ -112,32 +111,61 @@ class _HomeScreenState extends State<HomeScreen> {
       body: loading
           ? const Center(child: CircularProgressIndicator())
           : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ///  CLEAN HEADER (NO PARAGRAPHS)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surface,
+                    boxShadow: [
+                      BoxShadow(
+                        blurRadius: 14,
+                        offset: const Offset(0, 6),
+                        color: Colors.black.withOpacity(0.08),
+                      )
+                    ],
+                  ),
+                  child: Row(
                     children: [
-                      Text(
-                        _greeting(),
-                        style: theme.textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isDark
+                              ? theme.colorScheme.surface
+                              : theme.colorScheme.primary.withOpacity(0.12),
+                        ),
+                        child: Icon(
+                          Icons.home_work_rounded,
+                          size: 36,
+                          color: theme.colorScheme.primary,
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        "Recommended homes for you",
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey,
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _greeting(),
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              "Homes picked for you, based on your preferences",
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.hintColor,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
                 ),
 
-                ///  LISTINGS
                 Expanded(
                   child: listings.isEmpty
                       ? Center(
@@ -171,7 +199,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         )
                       : ListView.builder(
                           padding:
-                              const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                              const EdgeInsets.fromLTRB(16, 16, 16, 24),
                           itemCount: listings.length,
                           itemBuilder: (_, i) {
                             final p = listings[i];
@@ -185,12 +213,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                     favorites.contains(p.propertyId),
                                 isCompared:
                                     compared.contains(p.propertyId),
-
                                 onFavoriteToggle: () async {
-                                  if (favorites
-                                      .contains(p.propertyId)) {
-                                    await service.removeFavorite(
-                                        p.propertyId);
+                                  if (favorites.contains(p.propertyId)) {
+                                    await service
+                                        .removeFavorite(p.propertyId);
                                     favorites.remove(p.propertyId);
                                   } else {
                                     await service.addFavorite(p);
@@ -198,12 +224,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                   }
                                   setState(() {});
                                 },
-
                                 onCompareToggle: () async {
-                                  if (compared
-                                      .contains(p.propertyId)) {
-                                    await service.removeFromCompare(
-                                        p.propertyId);
+                                  if (compared.contains(p.propertyId)) {
+                                    await service
+                                        .removeFromCompare(p.propertyId);
                                     compared.remove(p.propertyId);
                                   } else {
                                     if (compared.length >= 3) {
@@ -221,14 +245,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                   }
                                   setState(() {});
                                 },
-
                                 onTap: () {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
                                       builder: (_) =>
-                                          PropertyDetailScreen(
-                                              property: p),
+                                          PropertyDetailScreen(property: p),
                                     ),
                                   );
                                 },

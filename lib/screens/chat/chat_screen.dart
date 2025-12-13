@@ -25,45 +25,54 @@ class _ChatScreenState extends State<ChatScreen> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
+
+      /// 🔹 APP BAR
       appBar: AppBar(
         centerTitle: true,
         title: Text(
-          isPropertyChat ? "Ask About Property" : "Support Chat",
+          isPropertyChat ? "Property Chat" : "Support",
+          style: const TextStyle(fontWeight: FontWeight.w600),
         ),
+        elevation: 0,
       ),
 
       body: Column(
         children: [
-          /// PROPERTY CONTEXT
+          ///  PROPERTY CONTEXT
           if (isPropertyChat)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
                 color: theme.colorScheme.surface,
                 boxShadow: [
                   BoxShadow(
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                     color: Colors.black.withOpacity(0.08),
                   )
                 ],
               ),
               child: Row(
                 children: const [
-                  Icon(Icons.home, size: 20),
-                  SizedBox(width: 8),
+                  Icon(Icons.home_work_outlined, size: 22),
+                  SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      "You’re chatting about this property",
-                      style: TextStyle(fontWeight: FontWeight.w600),
+                      "Chatting with the agent about this property",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
 
-          /// MESSAGES
+          ///  MESSAGES
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: isPropertyChat
@@ -77,8 +86,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 final docs = snapshot.data!.docs;
 
                 if (docs.isNotEmpty) {
-                  final lastSender = docs.last["senderId"];
-                  agentTyping = lastSender == "agent_bot";
+                  agentTyping = docs.last["senderId"] == "agent_bot";
                 }
 
                 WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -88,6 +96,10 @@ class _ChatScreenState extends State<ChatScreen> {
                     );
                   }
                 });
+
+                if (docs.isEmpty) {
+                  return _emptyChat(theme);
+                }
 
                 return ListView.builder(
                   controller: scrollController,
@@ -109,28 +121,64 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
 
-          /// TYPING INDICATOR
+          /// 🔹 TYPING INDICATOR
           if (agentTyping)
             Padding(
-              padding: const EdgeInsets.only(left: 16, bottom: 6),
+              padding: const EdgeInsets.only(left: 24, bottom: 6),
               child: Row(
                 children: const [
                   Text(
                     "Agent is typing…",
-                    style: TextStyle(color: Colors.grey),
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontStyle: FontStyle.italic,
+                    ),
                   )
                 ],
               ),
             ),
 
-          /// INPUT BAR
+          ///  INPUT BAR
           _messageInput(theme),
         ],
       ),
     );
   }
 
-  /// CHAT BUBBLE
+  ///  EMPTY CHAT STATE
+  Widget _emptyChat(ThemeData theme) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.chat_bubble_outline,
+              size: 70,
+              color: theme.hintColor,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              "Start the conversation",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "Ask questions about pricing, tours,\nor availability.",
+              textAlign: TextAlign.center,
+              style: TextStyle(color: theme.hintColor),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  ///  CHAT BUBBLE
   Widget _chatBubble({
     required BuildContext context,
     required String text,
@@ -146,9 +194,10 @@ class _ChatScreenState extends State<ChatScreen> {
             isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
           Container(
-            constraints:
-                BoxConstraints(maxWidth: MediaQuery.of(context).size.width * .75),
-            padding: const EdgeInsets.all(14),
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * .75,
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: isMe
                   ? theme.colorScheme.primary
@@ -157,9 +206,9 @@ class _ChatScreenState extends State<ChatScreen> {
                 topLeft: const Radius.circular(18),
                 topRight: const Radius.circular(18),
                 bottomLeft:
-                    isMe ? const Radius.circular(18) : const Radius.circular(4),
+                    isMe ? const Radius.circular(18) : const Radius.circular(6),
                 bottomRight:
-                    isMe ? const Radius.circular(4) : const Radius.circular(18),
+                    isMe ? const Radius.circular(6) : const Radius.circular(18),
               ),
               boxShadow: [
                 BoxShadow(
@@ -176,6 +225,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     ? theme.colorScheme.onPrimary
                     : theme.textTheme.bodyLarge?.color,
                 fontSize: 16,
+                height: 1.35,
               ),
             ),
           ),
@@ -190,7 +240,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  /// INPUT BAR
+  ///  INPUT BAR
   Widget _messageInput(ThemeData theme) {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 16),
@@ -198,9 +248,9 @@ class _ChatScreenState extends State<ChatScreen> {
         color: theme.colorScheme.surface,
         boxShadow: [
           BoxShadow(
-            blurRadius: 12,
-            offset: const Offset(0, -2),
-            color: Colors.black.withOpacity(0.12),
+            blurRadius: 14,
+            offset: const Offset(0, -3),
+            color: Colors.black.withOpacity(0.15),
           )
         ],
       ),
@@ -216,11 +266,13 @@ class _ChatScreenState extends State<ChatScreen> {
                 filled: true,
                 fillColor: theme.scaffoldBackgroundColor,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
+                  borderRadius: BorderRadius.circular(26),
                   borderSide: BorderSide.none,
                 ),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 14,
+                ),
               ),
             ),
           ),
