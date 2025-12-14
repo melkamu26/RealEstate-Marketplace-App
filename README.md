@@ -14,3 +14,18 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
+
+##Extra Information
+
+By Melkamu Gebre and Jalin Quick
+
+
+Used the Realtor API (Realty in US via RapidAPI) to retrieve real estate listings such as prices, and property details. 
+Google Maps and Street View APIs are used to display property locations and provide street-level views for better visual context.
+
+
+##Youtube link
+
+
+##Project slides
+https://docs.google.com/presentation/d/1kvhP6UNZLQA-SXlCbcISZV41oR2CgAYf-yG4Jd14ofU/edit?usp=sharing
